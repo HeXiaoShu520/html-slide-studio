@@ -1,0 +1,28 @@
+# Ignore system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ignore editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.log
+
+# Ignore node_modules if using any build tools
+node_modules/
+
+# Ignore output directories
+output/
+build/
+dist/
+
+# Ignore personal notes
+notes.md
+TODO.md
