@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --atag-primary: #0066FF;
+  --atag-primary-light: #00D9FF;
+  --atag-bg-dark: #0a0a1a;
+  --atag-bg-card: #1a1a2e;
+  --atag-bg-panel: #12121f;
+  --atag-border: #2a2a3e;
+  --atag-text: #e0e0e0;
+  --atag-text-muted: #8888aa;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: var(--atag-bg-dark);
+  color: var(--atag-text);
+}
+
+/* GrapesJS 深色主题适配 */
+.gjs-one-bg { background-color: var(--atag-bg-panel) !important; }
+.gjs-two-color { color: var(--atag-text) !important; }
+.gjs-three-bg { background-color: var(--atag-bg-card) !important; }
+.gjs-four-color, .gjs-four-color-h:hover { color: var(--atag-primary) !important; }
+.gjs-cv-canvas { background-color: #1e1e2e !important; }
+.gjs-pn-panel { border-color: var(--atag-border) !important; }
+.gjs-block { color: var(--atag-text) !important; border-color: var(--atag-border) !important; }
+.gjs-block:hover { border-color: var(--atag-primary) !important; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--atag-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--atag-text-muted); }
