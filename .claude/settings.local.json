@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__web-search-prime__web_search_prime",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:toolin.ai)",
+      "Bash(npx hermes-agent:*)",
+      "mcp__bocha-search__web_search",
+      "Bash(curl -s \"https://api.github.com/repos/prevwong/craft.js\")",
+      "Bash(curl -s https://api.github.com/repos/givanz/VvvebJs)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(fStars: {d.get\\(''''stargazers_count''''\\)}\\\\nForks: {d.get\\(''''forks_count''''\\)}\\\\nUpdated: {d.get\\(''''updated_at''''\\)}\\\\nPushed: {d.get\\(''''pushed_at''''\\)}\\\\nDescription: {d.get\\(''''description''''\\)}\\\\nSize: {d.get\\(''''size''''\\)}KB\\\\nLanguage: {d.get\\(''''language''''\\)}\\\\nOpen Issues: {d.get\\(''''open_issues_count''''\\)}\\\\nLicense: {d.get\\(''''license'''',{}\\).get\\(''''name''''\\) if d.get\\(''''license''''\\) else ''''None''''}\\)\")",
+      "Bash(curl -s \"https://craft.js.org/\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/prevwong/craft.js/master/README.md\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/prevwong/craft.js/master/package.json\")",
+      "Bash(curl -s https://grapesjs.com/docs/)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
