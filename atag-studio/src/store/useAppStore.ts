@@ -65,6 +65,9 @@ interface AppState {
 
   projectName: string
   setProjectName: (name: string) => void
+
+  previewHtml: string | null
+  setPreviewHtml: (html: string | null) => void
 }
 
 // 自动保存/加载项目到 localStorage
@@ -104,6 +107,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   projectName: saved.projectName || '未命名项目',
   setProjectName: (projectName) => set({ projectName }),
+
+  previewHtml: null,
+  setPreviewHtml: (previewHtml) => set({ previewHtml }),
 }))
 
 /** 保存完整项目到 localStorage（编辑器内容 + 元数据） */
