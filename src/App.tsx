@@ -3,6 +3,7 @@ import TopBar from './components/TopBar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
 import AIPanel from './components/AIPanel'
+import AIAssistant from './components/AIAssistant'
 import GrapesEditor from './editor/GrapesEditor'
 import { useAppStore } from './store/useAppStore'
 
@@ -26,24 +27,22 @@ export default function App() {
         <RightPanel />
         {previewHtml && (
           <div className="absolute inset-0 z-50 flex flex-col bg-black">
-            <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--atag-bg-panel)] border-b border-[var(--atag-border)] shrink-0">
-              <span className="text-xs text-[var(--atag-text-muted)]">预览 / 演示</span>
-              <button
-                className="text-xs text-[var(--atag-text-muted)] hover:text-[var(--atag-text)] px-2 py-1 rounded hover:bg-[rgba(255,255,255,0.05)]"
-                onClick={() => setPreviewHtml(null)}
-              >
-                关闭 ✕
-              </button>
-            </div>
+            <button
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 border border-white/20 text-white text-sm hover:bg-black/80 backdrop-blur-sm"
+              onClick={() => setPreviewHtml(null)}
+            >
+              ✕ 关闭预览
+            </button>
             <iframe
               className="flex-1 w-full border-none"
               srcDoc={previewHtml}
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
             />
           </div>
         )}
       </div>
       <AIPanel />
+      <AIAssistant />
     </div>
   )
 }

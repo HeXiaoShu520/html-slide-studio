@@ -3,682 +3,212 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UDS 统一诊断服务 - ATAG 示例</title>
+<title>UDS 诊断服务</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-:root {
-  --primary: #0066FF;
-  --secondary: #00D9FF;
-  --accent: #FFB800;
-  --success: #00C853;
-  --error: #FF3D00;
-  --bg-main: #0A0E1A;
-  --bg-card: #1A1F2E;
-  --text-primary: #FFFFFF;
-  --text-secondary: #B0B8C8;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
-  background: var(--bg-main);
-  color: var(--text-primary);
-  overflow: hidden;
-}
-
-.slide-container {
-  width: 100vw;
-  height: 100vh;
-  position: relative;
-}
-
-.slide {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 60px 80px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.6s ease;
-}
-
-.slide.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.anim {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: none;
-}
-
-.slide.active .anim {
-  animation: fadeInUp 0.7s ease forwards;
-}
-
-@keyframes fadeInUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.anim:nth-child(1) { animation-delay: 0s; }
-.anim:nth-child(2) { animation-delay: 0.1s; }
-.anim:nth-child(3) { animation-delay: 0.2s; }
-.anim:nth-child(4) { animation-delay: 0.3s; }
-.anim:nth-child(5) { animation-delay: 0.4s; }
-.anim:nth-child(6) { animation-delay: 0.5s; }
-.anim:nth-child(7) { animation-delay: 0.6s; }
-
-.title-xl {
-  font-size: 5rem;
-  font-weight: 900;
-  text-align: center;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 20px;
-}
-
-.title-lg {
-  font-size: 3rem;
-  font-weight: 800;
-  text-align: center;
-  color: var(--primary);
-  margin-bottom: 40px;
-}
-
-.title-md {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--secondary);
-  margin-bottom: 15px;
-}
-
-.text-lg {
-  font-size: 1.5rem;
-  line-height: 1.8;
-  color: var(--text-secondary);
-  text-align: center;
-  max-width: 900px;
-}
-
-.subtitle {
-  font-size: 1.8rem;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.icon-large {
-  font-size: 6rem;
-  color: var(--primary);
-  margin-bottom: 30px;
-}
-
-.divider {
-  width: 80px;
-  height: 4px;
-  background: linear-gradient(90deg, var(--primary), var(--secondary));
-  margin: 20px auto;
-  border-radius: 2px;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgba(0, 102, 255, 0.15);
-  border: 1px solid rgba(0, 102, 255, 0.3);
-  border-radius: 25px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--primary);
-  margin-top: 20px;
-}
-
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 30px;
-  width: 100%;
-  max-width: 1400px;
-  margin-top: 20px;
-}
-
-.atag-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 30px;
-  transition: all 0.3s ease;
-  text-align: center;
-}
-
-.atag-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 24px rgba(0, 102, 255, 0.3);
-  border-color: var(--primary);
-}
-
-.card-icon {
-  font-size: 3rem;
-  color: var(--primary);
-  margin-bottom: 15px;
-}
-
-.card-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-}
-
-.card-code {
-  font-family: 'Consolas', monospace;
-  font-size: 1.2rem;
-  color: var(--accent);
-  margin-bottom: 10px;
-}
-
-.card-desc {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.flow-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 30px;
-  flex-wrap: wrap;
-}
-
-.flow-step {
-  background: var(--bg-card);
-  border: 2px solid var(--primary);
-  border-radius: 12px;
-  padding: 20px 30px;
-  min-width: 150px;
-  text-align: center;
-}
-
-.flow-step i {
-  font-size: 2rem;
-  color: var(--primary);
-  display: block;
-  margin-bottom: 10px;
-}
-
-.flow-step span {
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.flow-arrow {
-  font-size: 2rem;
-  color: var(--secondary);
-}
-
-.packet-display {
-  background: var(--bg-card);
-  border: 1px solid rgba(0, 217, 255, 0.3);
-  border-radius: 12px;
-  padding: 30px;
-  margin-top: 30px;
-  max-width: 800px;
-}
-
-.packet-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-  align-items: center;
-}
-
-.packet-label {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  min-width: 120px;
-}
-
-.packet-value {
-  font-family: 'Consolas', monospace;
-  font-size: 1.3rem;
-  color: var(--accent);
-  background: rgba(255, 184, 0, 0.1);
-  padding: 8px 15px;
-  border-radius: 6px;
-}
-
-.layer-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 900px;
-  margin-top: 30px;
-}
-
-.layer-item {
-  background: var(--bg-card);
-  border-left: 4px solid var(--primary);
-  padding: 25px 30px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.layer-item:hover {
-  background: rgba(26, 31, 46, 0.8);
-  transform: translateX(10px);
-}
-
-.layer-title {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--primary);
-  margin-bottom: 8px;
-}
-
-.layer-desc {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.nav-hint {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  background: rgba(26, 31, 46, 0.9);
-  padding: 10px 20px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.page-indicator {
-  position: fixed;
-  top: 30px;
-  right: 30px;
-  font-size: 1rem;
-  color: var(--text-secondary);
-  background: rgba(26, 31, 46, 0.9);
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.highlight {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.grid-2col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  width: 100%;
-  max-width: 1200px;
-  margin-top: 30px;
-}
-
-.info-box {
-  background: var(--bg-card);
-  border: 1px solid rgba(0, 217, 255, 0.2);
-  border-radius: 12px;
-  padding: 25px;
-}
-
-.info-box h3 {
-  font-size: 1.5rem;
-  color: var(--secondary);
-  margin-bottom: 15px;
-}
-
-.info-box ul {
-  list-style: none;
-  padding: 0;
-}
-
-.info-box li {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  padding: 8px 0;
-  padding-left: 25px;
-  position: relative;
-}
-
-.info-box li::before {
-  content: '▸';
-  position: absolute;
-  left: 0;
-  color: var(--primary);
-}
-
+html{scroll-behavior:smooth}
+body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+:root{--primary:#0066FF;--primary-light:#00D9FF;--bg:#0a0e1a;--card:#111133;--border:rgba(0,102,255,0.3);--text:#e0e0e0;--muted:#8899aa}
+.page{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 80px;background:var(--bg);color:var(--text);box-sizing:border-box;position:relative}
+[class*="-anim"]{animation-play-state:paused}
+.page.visible [class*="-anim"]{animation-play-state:running}
 </style>
 </head>
 <body>
 
-<div class="page-indicator">页面 <span id="current-page">1</span> / 7</div>
-<div class="nav-hint">← → 方向键或滚轮翻页</div>
-
-<div class="slide-container">
-
-<!-- 第1页：封面 -->
-<div class="slide active">
-  <div class="anim icon-large">
-    <i class="fas fa-car"></i>
-  </div>
-  <div class="anim title-xl">UDS</div>
-  <div class="anim subtitle">统一诊断服务</div>
-  <div class="anim divider"></div>
-  <div class="anim text-lg">
-    Unified Diagnostic Services<br>
-    ISO 14229 车载诊断通信协议
-  </div>
-  <div class="anim badge">
-    <i class="fas fa-shield-alt"></i>
-    汽车诊断系统核心协议
-  </div>
+<div class="page">
+<style>
+.p1-tag{animation:p1f 0.4s ease both}
+.p1-h{animation:p1u 0.6s 0.15s ease both}
+.p1-sub{animation:p1u 0.6s 0.3s ease both}
+.p1-stats{animation:p1u 0.6s 0.45s ease both}
+@keyframes p1u{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p1f{from{opacity:0}to{opacity:1}}
+</style>
+<div class="p1-tag p1-anim" style="background:rgba(0,102,255,0.15);border:1px solid var(--border);border-radius:20px;padding:6px 18px;font-size:13px;color:var(--primary-light);margin-bottom:24px;letter-spacing:2px">ISO 14229</div>
+<h1 class="p1-h p1-anim" style="font-size:3.2em;font-weight:800;margin:0 0 16px;background:linear-gradient(135deg,#0066FF,#00D9FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center">UDS 统一诊断服务</h1>
+<p class="p1-sub p1-anim" style="font-size:1.3em;color:var(--muted);margin:0 0 40px;text-align:center">Unified Diagnostic Services</p>
+<div class="p1-stats p1-anim" style="display:flex;gap:32px">
+  <div style="text-align:center"><div style="font-size:2em;font-weight:700;color:var(--primary-light)">26+</div><div style="font-size:13px;color:var(--muted)">诊断服务</div></div>
+  <div style="width:1px;background:var(--border)"></div>
+  <div style="text-align:center"><div style="font-size:2em;font-weight:700;color:var(--primary-light)">ISO</div><div style="font-size:13px;color:var(--muted)">国际标准</div></div>
+  <div style="width:1px;background:var(--border)"></div>
+  <div style="text-align:center"><div style="font-size:2em;font-weight:700;color:var(--primary-light)">OBD</div><div style="font-size:13px;color:var(--muted)">车载诊断</div></div>
+</div>
 </div>
 
-<!-- 第2页：简介 -->
-<div class="slide">
-  <div class="anim title-lg">什么是 UDS？</div>
-  <div class="anim text-lg" style="margin-bottom: 40px;">
-    UDS（Unified Diagnostic Services）是基于 <span class="highlight">ISO 14229</span> 标准定义的车载诊断通信协议，<br>
-    广泛应用于现代汽车电子控制单元（ECU）的检测与维护中。
+<div class="page">
+<style>
+.p2-h{animation:p2u 0.5s ease both}
+.p2-c1{animation:p2l 0.5s 0.1s ease both}
+.p2-c2{animation:p2l 0.5s 0.25s ease both}
+.p2-c3{animation:p2l 0.5s 0.4s ease both}
+.p2-c4{animation:p2l 0.5s 0.55s ease both}
+@keyframes p2u{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p2l{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+.p2-card:hover{transform:translateY(-4px);border-color:var(--primary)!important;transition:all 0.2s}
+</style>
+<h2 class="p2-h p2-anim" style="font-size:2em;font-weight:700;margin:0 0 40px">协议概述</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:900px">
+  <div class="p2-card p2-c1 p2-anim" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px">
+    <i class="fas fa-layer-group" style="font-size:1.8em;color:var(--primary-light);margin-bottom:16px;display:block"></i>
+    <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">应用层协议</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6">基于 OSI 第7层，运行于 CAN、LIN、Ethernet 等物理层之上</div>
   </div>
-  <div class="anim grid-2col">
-    <div class="info-box">
-      <h3><i class="fas fa-check-circle"></i> 核心特点</h3>
-      <ul>
-        <li>标准化服务定义</li>
-        <li>请求-响应通信模式</li>
-        <li>支持多种传输层</li>
-        <li>完善的错误处理机制</li>
-      </ul>
-    </div>
-    <div class="info-box">
-      <h3><i class="fas fa-network-wired"></i> 传输层支持</h3>
-      <ul>
-        <li>CAN (ISO 15765)</li>
-        <li>DoIP (ISO 13400)</li>
-        <li>LIN</li>
-        <li>FlexRay</li>
-      </ul>
-    </div>
+  <div class="p2-card p2-c2 p2-anim" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px">
+    <i class="fas fa-exchange-alt" style="font-size:1.8em;color:var(--primary-light);margin-bottom:16px;display:block"></i>
+    <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">请求-响应模式</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6">Tester 发送请求，ECU 返回正响应（0x40+SID）或负响应（0x7F）</div>
   </div>
-</div>
-
-<!-- 第3页：架构 -->
-<div class="slide">
-  <div class="anim title-lg">UDS 协议架构</div>
-  <div class="anim layer-stack">
-    <div class="layer-item">
-      <div class="layer-title"><i class="fas fa-layer-group"></i> 应用层</div>
-      <div class="layer-desc">UDS 诊断服务（0x10, 0x22, 0x27, 0x2E, 0x31, 0x34-0x37, 0x19, 0x14 等）</div>
-    </div>
-    <div class="layer-item">
-      <div class="layer-title"><i class="fas fa-exchange-alt"></i> 传输层</div>
-      <div class="layer-desc">ISO-TP (CAN)、DoIP (Ethernet)、LIN-TP</div>
-    </div>
-    <div class="layer-item">
-      <div class="layer-title"><i class="fas fa-plug"></i> 物理层</div>
-      <div class="layer-desc">CAN 总线、以太网、LIN 总线</div>
-    </div>
+  <div class="p2-card p2-c3 p2-anim" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px">
+    <i class="fas fa-shield-alt" style="font-size:1.8em;color:var(--primary-light);margin-bottom:16px;display:block"></i>
+    <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">安全访问</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6">Seed-Key 机制保护敏感操作，不同安全级别对应不同权限</div>
+  </div>
+  <div class="p2-card p2-c4 p2-anim" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px">
+    <i class="fas fa-car" style="font-size:1.8em;color:var(--primary-light);margin-bottom:16px;display:block"></i>
+    <div style="font-size:1.1em;font-weight:600;margin-bottom:8px">广泛应用</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6">ECU 编程、故障诊断、数据读取，覆盖整车生命周期</div>
   </div>
 </div>
-
-<!-- 第4页：核心服务 -->
-<div class="slide">
-  <div class="anim title-lg">核心诊断服务</div>
-  <div class="anim cards-grid">
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-power-off"></i></div>
-      <div class="card-title">诊断会话控制</div>
-      <div class="card-code">0x10</div>
-      <div class="card-desc">切换诊断会话模式<br>（默认/编程/扩展）</div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-key"></i></div>
-      <div class="card-title">安全访问</div>
-      <div class="card-code">0x27</div>
-      <div class="card-desc">Seed-Key 机制<br>解锁受保护功能</div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-download"></i></div>
-      <div class="card-title">读取数据</div>
-      <div class="card-code">0x22</div>
-      <div class="card-desc">读取数据标识符<br>（VIN、版本号等）</div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-upload"></i></div>
-      <div class="card-title">写入数据</div>
-      <div class="card-code">0x2E</div>
-      <div class="card-desc">写入数据标识符<br>配置参数</div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-bug"></i></div>
-      <div class="card-title">读取故障码</div>
-      <div class="card-code">0x19</div>
-      <div class="card-desc">读取 DTC 故障码<br>及状态信息</div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-eraser"></i></div>
-      <div class="card-title">清除故障码</div>
-      <div class="card-code">0x14</div>
-      <div class="card-desc">清除诊断信息<br>重置故障状态</div>
-    </div>
-  </div>
 </div>
 
-<!-- 第5页：通信流程 -->
-<div class="slide">
-  <div class="anim title-lg">请求-响应通信模式</div>
-  <div class="anim flow-container">
-    <div class="flow-step">
-      <i class="fas fa-laptop"></i>
-      <span>诊断仪</span>
-    </div>
-    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
-    <div class="flow-step">
-      <i class="fas fa-paper-plane"></i>
-      <span>发送请求</span>
-    </div>
-    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
-    <div class="flow-step">
-      <i class="fas fa-microchip"></i>
-      <span>ECU 处理</span>
-    </div>
-    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
-    <div class="flow-step">
-      <i class="fas fa-reply"></i>
-      <span>返回响应</span>
-    </div>
+<div class="page">
+<style>
+.p3-h{animation:p3u 0.5s ease both}
+.p3-i1{animation:p3l 0.4s 0.1s ease both}
+.p3-i2{animation:p3l 0.4s 0.2s ease both}
+.p3-i3{animation:p3l 0.4s 0.3s ease both}
+.p3-i4{animation:p3l 0.4s 0.4s ease both}
+.p3-i5{animation:p3l 0.4s 0.5s ease both}
+.p3-i6{animation:p3l 0.4s 0.6s ease both}
+@keyframes p3u{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p3l{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+</style>
+<h2 class="p3-h p3-anim" style="font-size:2em;font-weight:700;margin:0 0 40px">核心服务分类</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;width:100%;max-width:960px">
+  <div class="p3-i1 p3-anim" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:11px;color:var(--primary-light);letter-spacing:1px;margin-bottom:8px">0x10</div>
+    <div style="font-weight:600;margin-bottom:6px">诊断会话控制</div>
+    <div style="font-size:13px;color:var(--muted)">切换 Default / Extended / Programming 会话</div>
   </div>
-  <div class="anim grid-2col" style="margin-top: 50px;">
-    <div class="info-box">
-      <h3><i class="fas fa-check"></i> 正响应</h3>
-      <ul>
-        <li>响应 SID = 请求 SID + 0x40</li>
-        <li>例：请求 0x22 → 响应 0x62</li>
-        <li>包含请求的数据内容</li>
-      </ul>
-    </div>
-    <div class="info-box">
-      <h3><i class="fas fa-times"></i> 负响应</h3>
-      <ul>
-        <li>固定格式：0x7F + SID + NRC</li>
-        <li>NRC：负响应码（错误原因）</li>
-        <li>例：0x7F 22 31（请求超出范围）</li>
-      </ul>
-    </div>
+  <div class="p3-i2 p3-anim" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:11px;color:var(--primary-light);letter-spacing:1px;margin-bottom:8px">0x27</div>
+    <div style="font-weight:600;margin-bottom:6px">安全访问</div>
+    <div style="font-size:13px;color:var(--muted)">Seed-Key 解锁，保护敏感操作</div>
+  </div>
+  <div class="p3-i3 p3-anim" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:11px;color:var(--primary-light);letter-spacing:1px;margin-bottom:8px">0x22</div>
+    <div style="font-weight:600;margin-bottom:6px">读取数据</div>
+    <div style="font-size:13px;color:var(--muted)">按 DID 读取 ECU 数据标识符</div>
+  </div>
+  <div class="p3-i4 p3-anim" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:11px;color:var(--primary-light);letter-spacing:1px;margin-bottom:8px">0x19</div>
+    <div style="font-weight:600;margin-bottom:6px">读取故障码</div>
+    <div style="font-size:13px;color:var(--muted)">读取 / 清除 DTC 故障诊断码</div>
+  </div>
+  <div class="p3-i5 p3-anim" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:11px;color:var(--primary-light);letter-spacing:1px;margin-bottom:8px">0x34/36/37</div>
+    <div style="font-weight:600;margin-bottom:6px">数据传输</div>
+    <div style="font-size:13px;color:var(--muted)">请求下载、传输数据、退出传输</div>
+  </div>
+  <div class="p3-i6 p3-anim" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px">
+    <div style="font-size:11px;color:var(--primary-light);letter-spacing:1px;margin-bottom:8px">0x11</div>
+    <div style="font-weight:600;margin-bottom:6px">ECU 复位</div>
+    <div style="font-size:13px;color:var(--muted)">硬复位 / 软复位 / 关闭电源</div>
   </div>
 </div>
+</div>
 
-<!-- 第6页：报文示例 -->
-<div class="slide">
-  <div class="anim title-lg">报文示例：读取 VIN 码</div>
-  <div class="anim packet-display">
-    <h3 style="color: var(--secondary); margin-bottom: 20px;">
-      <i class="fas fa-arrow-up"></i> 请求报文
-    </h3>
-    <div class="packet-row">
-      <div class="packet-label">服务 ID (SID):</div>
-      <div class="packet-value">0x22</div>
-      <span style="color: var(--text-secondary);">读取数据</span>
-    </div>
-    <div class="packet-row">
-      <div class="packet-label">数据标识符 (DID):</div>
-      <div class="packet-value">0xF190</div>
-      <span style="color: var(--text-secondary);">VIN 码</span>
-    </div>
+<div class="page">
+<style>
+.p4-h{animation:p4u 0.5s ease both}
+.p4-s1{animation:p4l 0.4s 0.1s ease both}
+.p4-s2{animation:p4l 0.4s 0.2s ease both}
+.p4-s3{animation:p4l 0.4s 0.3s ease both}
+.p4-s4{animation:p4l 0.4s 0.4s ease both}
+.p4-s5{animation:p4l 0.4s 0.5s ease both}
+@keyframes p4u{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p4l{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+</style>
+<h2 class="p4-h p4-anim" style="font-size:2em;font-weight:700;margin:0 0 40px">通信流程</h2>
+<div style="display:flex;flex-direction:column;gap:0;width:100%;max-width:700px">
+  <div class="p4-s1 p4-anim" style="display:flex;align-items:center;gap:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 24px">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,102,255,0.2);border:1px solid var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary-light);flex-shrink:0">1</div>
+    <div><div style="font-weight:600;margin-bottom:4px">切换诊断会话</div><div style="font-size:13px;color:var(--muted)">0x10 03 → 切换至 Extended Session</div></div>
   </div>
-  <div class="anim packet-display">
-    <h3 style="color: var(--success); margin-bottom: 20px;">
-      <i class="fas fa-arrow-down"></i> 响应报文
-    </h3>
-    <div class="packet-row">
-      <div class="packet-label">响应 SID:</div>
-      <div class="packet-value">0x62</div>
-      <span style="color: var(--text-secondary);">0x22 + 0x40</span>
+  <div style="width:2px;height:12px;background:var(--border);margin-left:38px"></div>
+  <div class="p4-s2 p4-anim" style="display:flex;align-items:center;gap:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 24px">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,102,255,0.2);border:1px solid var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary-light);flex-shrink:0">2</div>
+    <div><div style="font-weight:600;margin-bottom:4px">请求 Seed</div><div style="font-size:13px;color:var(--muted)">0x27 01 → ECU 返回 0x67 01 [Seed]</div></div>
+  </div>
+  <div style="width:2px;height:12px;background:var(--border);margin-left:38px"></div>
+  <div class="p4-s3 p4-anim" style="display:flex;align-items:center;gap:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 24px">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,102,255,0.2);border:1px solid var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary-light);flex-shrink:0">3</div>
+    <div><div style="font-weight:600;margin-bottom:4px">发送 Key</div><div style="font-size:13px;color:var(--muted)">0x27 02 [Key] → ECU 返回 0x67 02（解锁成功）</div></div>
+  </div>
+  <div style="width:2px;height:12px;background:var(--border);margin-left:38px"></div>
+  <div class="p4-s4 p4-anim" style="display:flex;align-items:center;gap:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 24px">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,102,255,0.2);border:1px solid var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary-light);flex-shrink:0">4</div>
+    <div><div style="font-weight:600;margin-bottom:4px">执行诊断操作</div><div style="font-size:13px;color:var(--muted)">读取数据 / 写入参数 / 下载固件</div></div>
+  </div>
+  <div style="width:2px;height:12px;background:var(--border);margin-left:38px"></div>
+  <div class="p4-s5 p4-anim" style="display:flex;align-items:center;gap:20px;background:var(--card);border:1px solid rgba(0,217,255,0.3);border-radius:10px;padding:18px 24px">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,217,255,0.15);border:1px solid var(--primary-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary-light);flex-shrink:0">5</div>
+    <div><div style="font-weight:600;margin-bottom:4px">ECU 复位</div><div style="font-size:13px;color:var(--muted)">0x11 01 硬复位，结束诊断会话</div></div>
+  </div>
+</div>
+</div>
+
+<div class="page">
+<style>
+.p5-h{animation:p5u 0.5s ease both}
+.p5-box{animation:p5u 0.5s 0.2s ease both}
+.p5-r1{animation:p5l 0.4s 0.3s ease both}
+.p5-r2{animation:p5l 0.4s 0.4s ease both}
+.p5-r3{animation:p5l 0.4s 0.5s ease both}
+@keyframes p5u{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p5l{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+</style>
+<h2 class="p5-h p5-anim" style="font-size:2em;font-weight:700;margin:0 0 32px">报文示例</h2>
+<div class="p5-box p5-anim" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;width:100%;max-width:800px">
+  <div style="font-size:13px;color:var(--muted);margin-bottom:16px">读取 ECU 软件版本（DID: F189）</div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="p5-r1 p5-anim" style="display:flex;align-items:center;gap:16px">
+      <div style="width:80px;font-size:12px;color:var(--primary-light);flex-shrink:0">请求帧</div>
+      <div style="font-family:monospace;font-size:14px;background:#0a0e1a;border:1px solid rgba(0,102,255,0.2);border-radius:6px;padding:10px 16px;flex:1;letter-spacing:2px">22 F1 89</div>
+      <div style="font-size:12px;color:var(--muted)">ReadDataByIdentifier</div>
     </div>
-    <div class="packet-row">
-      <div class="packet-label">数据标识符:</div>
-      <div class="packet-value">0xF190</div>
+    <div class="p5-r2 p5-anim" style="display:flex;align-items:center;gap:16px">
+      <div style="width:80px;font-size:12px;color:#4ade80;flex-shrink:0">正响应</div>
+      <div style="font-family:monospace;font-size:14px;background:#0a0e1a;border:1px solid rgba(74,222,128,0.2);border-radius:6px;padding:10px 16px;flex:1;letter-spacing:2px">62 F1 89 56 31 2E 30 2E 30</div>
+      <div style="font-size:12px;color:var(--muted)">V1.0.0</div>
     </div>
-    <div class="packet-row">
-      <div class="packet-label">VIN 数据:</div>
-      <div class="packet-value">4C 4E 42 43 31 32 33 34 35 36 37 38 39 30 31 32 33</div>
-    </div>
-    <div style="margin-top: 15px; color: var(--text-secondary); text-align: center;">
-      解码：LNBC1234567890123
+    <div class="p5-r3 p5-anim" style="display:flex;align-items:center;gap:16px">
+      <div style="width:80px;font-size:12px;color:#f87171;flex-shrink:0">负响应</div>
+      <div style="font-family:monospace;font-size:14px;background:#0a0e1a;border:1px solid rgba(248,113,113,0.2);border-radius:6px;padding:10px 16px;flex:1;letter-spacing:2px">7F 22 31</div>
+      <div style="font-size:12px;color:var(--muted)">requestOutOfRange</div>
     </div>
   </div>
 </div>
-
-<!-- 第7页：应用场景 -->
-<div class="slide">
-  <div class="anim title-lg">实际应用场景</div>
-  <div class="anim cards-grid">
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-wrench"></i></div>
-      <div class="card-title">维修诊断</div>
-      <div class="card-desc">
-        读取故障码<br>
-        清除故障信息<br>
-        查看实时数据<br>
-        执行功能测试
-      </div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-      <div class="card-title">软件升级</div>
-      <div class="card-desc">
-        刷写 ECU 程序<br>
-        更新标定数据<br>
-        OTA 远程升级<br>
-        版本管理
-      </div>
-    </div>
-    <div class="atag-card">
-      <div class="card-icon"><i class="fas fa-industry"></i></div>
-      <div class="card-title">生产测试</div>
-      <div class="card-desc">
-        EOL 配置<br>
-        参数标定<br>
-        功能验证<br>
-        质量检测
-      </div>
-    </div>
-  </div>
-  <div class="anim text-lg" style="margin-top: 50px;">
-    <i class="fas fa-info-circle"></i>
-    UDS 是现代汽车诊断系统的基础，支撑着从生产到售后的全生命周期管理
-  </div>
-</div>
-
 </div>
 
 <script>
-let currentSlide = 0;
-const slides = document.querySelectorAll('.slide');
-const totalSlides = slides.length;
-const pageIndicator = document.getElementById('current-page');
-
-function showSlide(n) {
-  slides[currentSlide].classList.remove('active');
-  currentSlide = (n + totalSlides) % totalSlides;
-  slides[currentSlide].classList.add('active');
-  pageIndicator.textContent = currentSlide + 1;
-
-  // 重置动画
-  const anims = slides[currentSlide].querySelectorAll('.anim');
-  anims.forEach(el => {
-    el.style.animation = 'none';
-    setTimeout(() => {
-      el.style.animation = '';
-    }, 10);
+const pages=[...document.querySelectorAll('.page')];
+const io=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting)e.target.classList.add('visible');
+    else e.target.classList.remove('visible');
   });
-}
-
-// 键盘控制
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-    showSlide(currentSlide + 1);
-  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-    showSlide(currentSlide - 1);
-  }
-});
-
-// 鼠标滚轮控制
-let scrollTimeout;
-document.addEventListener('wheel', (e) => {
-  clearTimeout(scrollTimeout);
-  scrollTimeout = setTimeout(() => {
-    if (e.deltaY > 0) {
-      showSlide(currentSlide + 1);
-    } else {
-      showSlide(currentSlide - 1);
-    }
-  }, 50);
-}, { passive: true });
-
-// 触摸滑动支持
-let touchStartX = 0;
-let touchEndX = 0;
-
-document.addEventListener('touchstart', (e) => {
-  touchStartX = e.changedTouches[0].screenX;
-});
-
-document.addEventListener('touchend', (e) => {
-  touchEndX = e.changedTouches[0].screenX;
-  if (touchStartX - touchEndX > 50) {
-    showSlide(currentSlide + 1);
-  } else if (touchEndX - touchStartX > 50) {
-    showSlide(currentSlide - 1);
-  }
+},{threshold:0.4});
+pages.forEach(p=>{
+  io.observe(p);
+  const btn=document.createElement('button');
+  btn.textContent='↺';btn.title='重播动画';
+  btn.style.cssText='position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.4);color:#fff;cursor:pointer;font-size:14px;z-index:10';
+  btn.onclick=()=>{p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')};
+  p.appendChild(btn);
 });
 </script>
-
 </body>
 </html>
