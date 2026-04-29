@@ -3,7 +3,7 @@ import { Eye, Play } from 'lucide-react'
 import TopBar from './components/TopBar'
 import SlideStrip from './components/SlideStrip'
 import CodeEditor, { type CodeEditorHandle } from './components/CodeEditor'
-import PreviewFrame from './components/PreviewFrame'
+import PreviewFrame, { type PreviewFrameHandle } from './components/PreviewFrame'
 import SnippetPanel from './components/SnippetPanel'
 import AIPanel from './components/AIPanel'
 import AIAssistant, { type AIAssistantHandle } from './components/AIAssistant'
@@ -15,6 +15,7 @@ export default function App() {
   const { slides, currentSlideIndex, currentTheme, globalCss, updateCurrentSlide, setPreviewHtml, previewHtml, showAIPanel } = useAppStore()
   const editorRef = useRef<CodeEditorHandle>(null)
   const aiRef = useRef<AIAssistantHandle>(null)
+  const previewRef = useRef<PreviewFrameHandle>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string } | null>(null)
 
@@ -33,7 +34,10 @@ export default function App() {
     const hide = () => setCtxMenu(null)
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === 'quote-selection') {
-        setCtxMenu({ x: e.data.x, y: e.data.y, text: e.data.text })
+        const rect = previewRef.current?.getIframeRect()
+        const x = (rect?.left ?? 0) + e.data.x
+        const y = (rect?.top ?? 0) + e.data.y
+        setCtxMenu({ x, y, text: e.data.text })
       }
     }
     window.addEventListener('click', hide)
@@ -77,7 +81,7 @@ export default function App() {
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {currentSlide && (
-              <PreviewFrame slideHtml={currentSlide.html} globalCss={globalCss} themeCSS={themeCSS} />
+              <PreviewFrame ref={previewRef} slideHtml={currentSlide.html} globalCss={globalCss} themeCSS={themeCSS} />
             )}
           </div>
         </div>
