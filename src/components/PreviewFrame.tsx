@@ -9,13 +9,15 @@ interface Props {
 
 export interface PreviewFrameHandle {
   getIframeRect: () => DOMRect | null
+  getIframe: () => HTMLIFrameElement | null
 }
 
 const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(({ slideHtml, globalCss, themeCSS }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useImperativeHandle(ref, () => ({
-    getIframeRect: () => iframeRef.current?.getBoundingClientRect() ?? null
+    getIframeRect: () => iframeRef.current?.getBoundingClientRect() ?? null,
+    getIframe: () => iframeRef.current ?? null,
   }))
 
   const srcdoc = useMemo(

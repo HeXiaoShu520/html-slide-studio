@@ -27,6 +27,11 @@ export default function App() {
     debounceRef.current = setTimeout(() => updateCurrentSlide(html), 300)
   }, [updateCurrentSlide])
 
+  const handleCursorLine = useCallback((line: number) => {
+    const iframe = previewRef.current?.getIframe()
+    iframe?.contentWindow?.postMessage({ type: 'highlight-line', line }, '*')
+  }, [])
+
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
   // 预览区右键菜单：监听 iframe postMessage + 点击关闭
@@ -59,6 +64,7 @@ export default function App() {
               value={currentSlide?.html ?? ''}
               onChange={handleCodeChange}
               onQuoteToAI={(text) => aiRef.current?.appendContext(text)}
+              onCursorLine={handleCursorLine}
             />
           </div>
           <AIAssistant

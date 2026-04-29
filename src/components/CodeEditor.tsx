@@ -12,12 +12,15 @@ interface Props {
   value: string
   onChange: (value: string) => void
   onQuoteToAI?: (text: string) => void
+  onCursorLine?: (line: number) => void
 }
 
-const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ value, onChange, onQuoteToAI }, ref) => {
+const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ value, onChange, onQuoteToAI, onCursorLine }, ref) => {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const onQuoteRef = useRef(onQuoteToAI)
   onQuoteRef.current = onQuoteToAI
+  const onCursorRef = useRef(onCursorLine)
+  onCursorRef.current = onCursorLine
 
   useImperativeHandle(ref, () => ({
     insertSnippet: (code: string) => {
@@ -44,6 +47,9 @@ const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ value, onChange, onQuo
 
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
+    editor.onDidChangeCursorPosition((e) => {
+      onCursorRef.current?.(e.position.lineNumber)
+    })
     editor.addAction({
       id: 'quote-to-ai',
       label: '引用到 AI 助手',

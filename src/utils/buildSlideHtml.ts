@@ -15,6 +15,13 @@ document.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRi
 `
 
 export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: string): string {
+  // 给每个顶层标签注入 data-line 行号，供高亮同步使用
+  let lineNum = 1
+  const annotated = slideHtml.replace(/^([ \t]*<[a-zA-Z][^>]*?)>/gm, (_match, p1) => {
+    const result = `${p1} data-line="${lineNum}">`
+    lineNum++
+    return result
+  })
   return `<!DOCTYPE html><html lang="zh-CN"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -22,8 +29,9 @@ export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: s
 <style>${themeCSS}${globalCss}
 .replay-btn{position:fixed;bottom:20px;right:20px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:15px;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:999}
 .replay-btn:hover{background:rgba(0,102,255,0.6)}
+[data-hl]{outline:2px solid rgba(0,153,255,0.8)!important;outline-offset:2px;box-shadow:0 0 0 4px rgba(0,153,255,0.15)!important;transition:outline .15s,box-shadow .15s}
 </style>
-</head><body style="margin:0">${slideHtml}
+</head><body style="margin:0">${annotated}
 <button class="replay-btn" onclick="(function(){const p=document.querySelector('.page');if(!p)return;p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})()" title="重播动画">↺</button>
 <script>
 const p=document.querySelector('.page');
@@ -31,6 +39,18 @@ if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isInt
 document.addEventListener('contextmenu',e=>{
   const sel=window.getSelection()?.toString().trim();
   if(sel){e.preventDefault();parent.postMessage({type:'quote-selection',text:sel,x:e.clientX,y:e.clientY},'*');}
+});
+window.addEventListener('message',e=>{
+  if(e.data?.type!=='highlight-line')return;
+  const line=e.data.line;
+  document.querySelectorAll('[data-hl]').forEach(el=>el.removeAttribute('data-hl'));
+  const all=document.querySelectorAll('[data-line]');
+  let best=null;
+  all.forEach(el=>{
+    const l=+el.getAttribute('data-line');
+    if(l<=line)best=el;
+  });
+  if(best){best.setAttribute('data-hl','1');}
 });
 <\/script>
 </body></html>`
