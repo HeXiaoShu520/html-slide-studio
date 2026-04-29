@@ -19,8 +19,17 @@ export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: s
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>${themeCSS}${globalCss}</style>
-</head><body style="margin:0">${slideHtml}</body></html>`
+<style>${themeCSS}${globalCss}
+.replay-btn{position:fixed;bottom:20px;right:20px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:15px;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:999}
+.replay-btn:hover{background:rgba(0,102,255,0.6)}
+</style>
+</head><body style="margin:0">${slideHtml}
+<button class="replay-btn" onclick="(function(){const p=document.querySelector('.page');if(!p)return;p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})()" title="重播动画">↺</button>
+<script>
+const p=document.querySelector('.page');
+if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');else e.target.classList.remove('visible')})},{threshold:0.4});io.observe(p);}
+<\/script>
+</body></html>`
 }
 
 export function buildPresentHtml(slides: Slide[], globalCss: string, themeCSS: string, projectName: string): string {
