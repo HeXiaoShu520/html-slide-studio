@@ -1,10 +1,6 @@
 # HTML Slide Studio
 
-> 用 AI 生成演示文档，用网页运行演示文档
-
-把"想内容 → 设计结构 → 排版 → 调样式"这个过程自动化。输入你的内容，AI 拆结构、生成 slides、加动画，你只需微调。
-
----
+基于代码编辑的 HTML 演示文档制作工具。左侧 Monaco 编辑器编写 HTML，右侧实时渲染预览，支持 AI 一键生成。
 
 ## 快速开始
 
@@ -13,91 +9,57 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:5173
+## 功能
 
----
+- **代码编辑**：Monaco Editor，HTML 语法高亮、自动补全
+- **实时预览**：编辑代码 300ms 后右侧 iframe 自动更新
+- **页面管理**：顶部缩略图栏，点击切换，支持新增/删除
+- **组件插入**：预设代码片段（卡片、表格、流程图等），点击插入到光标位置
+- **AI 生成**：调用 OpenAI/Claude API，自动生成多页演示文档
+- **AI 助手**：左下角聊天面板，框选代码或右键"引用到 AI 助手"，对话式修改当前页
+- **右键引用**：代码编辑器右键菜单"引用到 AI 助手"；预览区选中文本后右键同样可引用
+- **主题切换**：暗黑科技 / 机械工业
+- **演示模式**：全屏翻页，键盘/滚轮控制，IntersectionObserver 触发动画
+- **导出**：导出为独立可运行的 HTML 文件
 
-## 核心功能
+## 每页代码结构
 
-| 功能 | 说明 |
-|------|------|
-| AI 生成 | 选模板 + 粘贴内容，一键生成带动画的演示文档 |
-| 生成风格 | 暗黑科技 / 商务简约 / 新能源 / 机械工业，每种风格独立动画体系 |
-| 可视化编辑 | 拖拽组件、双击编辑文字、右侧面板调整样式 |
-| 导入转换 | 导入普通 HTML，AI 自动重构为演示格式 |
-| 主题切换 | 电动蓝 / 机械灰 / 新能源绿 |
-| 预览 / 演示 | 窗口内预览，演示模式支持键盘翻页 |
-| 自动保存 | 编辑实时保存到 localStorage |
-| 导入 / 导出 | 导出 HTML 可重新导入继续编辑 |
+每页是独立的 HTML 片段，页面间完全解耦：
 
----
+```html
+<style>
+/* 页面私有样式（可选） */
+</style>
 
-## 使用指南
+<div class="page">
+  <!-- 内容 -->
+</div>
 
-### 1. AI 生成文档
+<script>
+// 页面私有脚本（可选）
+const config = { title: "标题" }
+document.querySelector('h1').textContent = config.title
+</script>
+```
 
-1. 点击顶栏 **AI 生成**
-2. 展开"API 配置"，填入 Endpoint / Key / 模型名
-3. 选择**生成风格**（决定配色和动画风格）
-4. 选择**文档类别**和**模板**
-5. 可选：粘贴参考内容（技术文档、Markdown 等）
-6. 点击**开始生成**
+渲染时自动注入全局样式（主题变量、基础类、动画 keyframes）。
 
-支持的类别：车载技术（UDS / SOME/IP / DoIP / OTA）、技术培训、产品展示、自定义
+## 可用全局 CSS 类
 
-### 2. 可视化编辑
+`.page` `.card` `.card-grid` `.badge` `.icon-circle`
+`.flow-container` `.flow-step` `.flow-arrow`
+`.timeline` `.timeline-item`
+`.code-block` `.packet-table`
+`.animate-in` `.animate-fade` `.animate-left` `.animate-right`
 
-- 拖拽组件：从左侧"组件"面板拖入画布
-- 选中元素：单击选中，双击编辑文字
-- 调整样式：右侧"样式"面板修改尺寸、排版、背景、边框
-- 撤销/重做：顶栏按钮，或 Ctrl+Z / Ctrl+Y
+## 可用 CSS 变量
 
-### 3. 导入普通 HTML
-
-导入不含 `.page` 结构的 HTML 时，会提示选择风格让 AI 自动重构为演示格式。
-
-### 4. 预览与演示
-
-- **预览**：点击 👁 图标
-- **演示模式**：点击 ▶ 图标，↑↓ 方向键 / 空格翻页，ESC 退出
-
-### 5. 保存与导出
-
-- 自动保存：编辑时实时保存
-- **导出项目**：📥 图标，导出含元数据的 `.html`（可重新导入）
-- **导出 HTML**：导出完整可分享的 HTML 文件
-
----
-
-## 为什么用 HTML 而不是 PowerPoint？
-
-| | HTML Slide Studio | PowerPoint |
-|---|---|---|
-| 动画效果 | CSS 动画，每页独立，无限制 | 内置动画，有限 |
-| 交互性 | 可嵌入代码、图表、视频 | 有限 |
-| 分发 | 单个 HTML 文件，浏览器打开 | 需要 Office |
-| AI 生成 | 直接输出 HTML，结构化 | 需要 Office API |
-| 适合场景 | 技术分享、方案介绍、开发者演示 | 通用办公 |
-
----
-
-## 自定义 AI 生成风格
-
-风格文件在项目根目录 `styles/` 下，每个 `.ts` 文件是一种风格，启动时自动加载。
-
-添加新风格：复制 `styles/TEMPLATE.ts`，修改4个字段（id / name / description / animationDescription），保存即生效。
-
-详见 [styles/README.md](styles/README.md)
-
----
+`--primary` `--primary-light` `--bg-main` `--bg-card` `--text-color` `--gradient`
 
 ## 技术栈
 
-- React 18 + TypeScript + Vite
-- GrapesJS（可视化编辑引擎）
-- TailwindCSS + Zustand
-- OpenAI 兼容 API
-
-## License
-
-MIT
+- React 19 + TypeScript
+- Vite 8
+- Zustand（状态管理）
+- Monaco Editor（代码编辑）
+- Tailwind CSS（UI 样式）

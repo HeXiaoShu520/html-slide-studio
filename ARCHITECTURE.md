@@ -1,140 +1,122 @@
-# HTML Slide Studio — 技术架构文档
+# 系统架构设计文档
 
-## 技术栈
-
-| 层 | 技术 | 用途 |
-|----|------|------|
-| 框架 | React 18 + TypeScript + Vite | 应用框架 |
-| 编辑引擎 | GrapesJS 0.22 | 可视化 HTML 编辑 |
-| 样式 | TailwindCSS 4 | UI 样式 |
-| 状态管理 | Zustand 5 | 全局状态 |
-| AI | OpenAI 兼容 API | 文档生成 |
-
----
-
-## 目录结构
+## 整体架构
 
 ```
-src/
-├── App.tsx                    # 根组件，三栏布局 + 预览覆盖层
-├── components/
-│   ├── TopBar.tsx             # 顶栏：项目名、工具按钮、主题选择
-│   ├── LeftPanel.tsx          # 左侧：组件块 / 图层面板
-│   ├── RightPanel.tsx         # 右侧：样式 / Traits / 动画面板
-│   └── AIPanel.tsx            # AI 生成弹窗
-├── editor/
-│   ├── GrapesEditor.tsx       # GrapesJS 初始化、自动保存、主题同步
-│   └── blocks/
-│       └── registerBlocks.ts  # 注册自定义组件块
-├── store/
-│   └── useAppStore.ts         # Zustand store + 项目保存/加载工具函数
-└── themes/
-    └── themeCSS.ts            # 主题 CSS 变量生成
+┌─────────────────────────────────────────────────────┐
+│  TopBar: 项目名 | 主题 | AI生成 | 导出 | 演示         │
+├─────────────────────────────────────────────────────┤
+│  SlideStrip（横向缩略图栏）[页1][页2][+]              │
+├──────────────────────┬──────────────────────────────┤
+│  SnippetPanel(折叠)  │                              │
+│  ──────────────────  │   PreviewFrame               │
+│  CodeEditor          │   (iframe srcdoc)            │
+│  (Monaco HTML)       │   实时渲染当前页              │
+└──────────────────────┴──────────────────────────────┘
 ```
-
----
-
-## 核心模块说明
-
-### GrapesEditor.tsx
-
-GrapesJS 的 React 封装。关键设计：
-
-- `storageManager: false` — 禁用 GrapesJS 内置存储，改用自定义 localStorage 方案
-- `editor.on('load', ...)` — 等待编辑器完全初始化后再暴露给其他组件，避免时序问题
-- `setInterval(5000)` — 每 5 秒调用 `saveProject()` 自动保存
-- 主题切换通过 `editor.setStyle(getThemeCSS(theme))` 实时更新 canvas 内样式
-
-### useAppStore.ts
-
-Zustand store，同时导出三个工具函数：
-
-| 函数 | 说明 |
-|------|------|
-| `saveProject(editor, name, theme)` | 序列化 `editor.getProjectData()` 存入 localStorage |
-| `loadProject(editor)` | 从 localStorage 读取并调用 `editor.loadProjectData()` |
-| `exportProjectFile(editor, name, theme)` | 导出带 `<!-- atag-meta: {...} -->` 注释的 HTML 文件 |
-| `importProjectFile(file)` | 解析导入的 HTML 文件，提取元数据、CSS、HTML 内容 |
-
-### 项目文件格式
-
-导出的 `.html` 文件结构：
-
-```html
-<!-- atag-meta: {"projectName":"xxx","theme":"electric-blue"} -->
-<style id="atag-css">/* GrapesJS CSS */</style>
-<!-- GrapesJS HTML 内容 -->
-```
-
-导入时通过正则提取三部分，分别恢复到编辑器。
-
-### 主题系统
-
-三套主题通过 CSS 变量实现，`getThemeCSS(themeId)` 生成注入 canvas 的样式字符串：
-
-```
---primary, --primary-light, --bg-main, --bg-card, --text-color, --gradient
-```
-
-AI 生成的 HTML 使用这些变量，切换主题时自动更新配色。
-
-### 预览 / 演示模式
-
-通过 `previewHtml` store 状态控制：
-
-1. TopBar 调用 `setPreviewHtml(fullHtml)` 设置内容
-2. App.tsx 检测到非 null 时，在编辑器上方渲染 `<iframe srcDoc={previewHtml}>`
-3. 演示模式的 iframe 内通过 `window.parent.postMessage('close-preview', '*')` 通知父窗口关闭
-
----
 
 ## 数据流
 
 ```
-用户操作
-  │
-  ├─ 拖拽/编辑 → GrapesJS 内部状态
-  │                    │
-  │              每 5 秒 saveProject()
-  │                    │
-  │              localStorage['atag-project-data']
-  │
-  ├─ AI 生成 → editor.setComponents(html) + editor.setStyle(css)
-  │
-  ├─ 导出 HTML → editor.getHtml() + editor.getCss() → Blob 下载
-  │
-  └─ 预览/演示 → setPreviewHtml(fullHtml) → iframe srcDoc
+用户编辑代码
+    │
+    ▼ debounce 300ms
+updateCurrentSlide(html)
+    │
+    ├─► Zustand store.slides[i].html 更新
+    │       │
+    │       ▼
+    │   localStorage 持久化
+    │
+    └─► PreviewFrame 重新渲染
+            │
+            ▼
+        buildSlideHtml(html, globalCss, themeCSS)
+            │
+            ▼
+        iframe srcdoc 更新
 ```
 
----
+## 核心模块
 
-## 扩展指南
-
-### 添加新组件块
-
-在 `src/editor/blocks/registerBlocks.ts` 中：
+### store/useAppStore.ts
+Zustand store，管理全局状态。无副作用，纯数据层。
 
 ```typescript
-bm.add('my-block', {
-  label: '我的组件',
-  category: '自定义',
-  content: `<div class="card">...</div>`,
-})
-```
-
-### 添加新主题
-
-在 `src/themes/themeCSS.ts` 的 `THEMES` 对象中添加新条目，同时在 `src/store/useAppStore.ts` 的 `ThemeId` 类型和 `THEMES` 记录中同步添加。
-
-### 添加 AI 模板类别
-
-在 `src/components/AIPanel.tsx` 的 `CATEGORIES` 数组中添加新类别对象：
-
-```typescript
-{
-  name: '新类别',
-  templates: [
-    { label: '模板名', prompt: '生成指令...' },
-  ],
+interface Slide { id, title, html }
+interface AppState {
+  slides: Slide[]
+  currentSlideIndex: number
+  projectName: string
+  currentTheme: ThemeId
+  globalCss: string
+  previewHtml: string | null
+  showAIPanel: boolean
 }
+```
+
+### utils/buildSlideHtml.ts
+纯函数，无副作用。
+
+- `buildSlideHtml(html, globalCss, themeCSS)` — 单页预览
+- `buildPresentHtml(slides, globalCss, themeCSS, name)` — 演示模式（scroll-snap + 导航）
+
+### themes/themeCSS.ts
+纯函数，返回 CSS 字符串。包含：
+- CSS 变量定义（`--primary` 等）
+- 全局 reset
+- 通用类（`.page`, `.card`, `.badge` 等）
+- keyframes 动画
+
+### components/CodeEditor.tsx
+Monaco Editor 封装。通过 `ref` 暴露 `insertSnippet(code)` 方法供 SnippetPanel 调用。
+
+### components/PreviewFrame.tsx
+`<iframe srcdoc>` 封装。`useMemo` 缓存 srcdoc，避免不必要的重渲染。
+
+### components/SlideStrip.tsx
+缩略图栏。每个缩略图是 scale(0.125) 缩小的 iframe，pointer-events:none 防止交互。
+
+### components/SnippetPanel.tsx
+可折叠的代码片段面板。点击片段 → 调用 `codeEditorRef.current.insertSnippet(code)`。
+
+### components/AIPanel.tsx
+AI 生成面板。调用 OpenAI/Anthropic API，解析返回的 HTML，按 `.page` 分割为独立 slides。
+
+## 每页数据格式
+
+每页 `slide.html` 是**自包含片段**：
+
+```html
+<style>/* 页面私有样式 */</style>
+<div class="page"><!-- 内容 --></div>
+<script>/* 页面私有脚本 */</script>
+```
+
+渲染时 `buildSlideHtml` 在外层注入全局样式，页面间无耦合。
+
+## 演示模式
+
+`buildPresentHtml` 拼接所有页面 html，外层包裹：
+- `scroll-snap-type: y mandatory` 容器
+- IntersectionObserver 触发 `.visible` 动画
+- 键盘/滚轮翻页
+- 导航按钮（↑ ↺ ↓）
+
+## 文件结构
+
+```
+src/
+├── App.tsx                  # 布局骨架
+├── index.css                # Tailwind + CSS 变量
+├── store/useAppStore.ts     # 全局状态
+├── themes/themeCSS.ts       # 主题 CSS 生成
+├── utils/buildSlideHtml.ts  # HTML 拼装工具
+└── components/
+    ├── TopBar.tsx           # 顶栏
+    ├── SlideStrip.tsx       # 缩略图栏
+    ├── CodeEditor.tsx       # Monaco 封装
+    ├── PreviewFrame.tsx     # iframe 渲染
+    ├── SnippetPanel.tsx     # 代码片段插入
+    └── AIPanel.tsx          # AI 生成面板
 ```

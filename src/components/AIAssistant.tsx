@@ -1,336 +1,167 @@
-import { useState, useRef, useEffect } from 'react'
-import { MessageSquare, X, Send, Loader2, Sparkles, Settings, FileText, Square, Layers } from 'lucide-react'
-import { useAppStore } from '../store/useAppStore'
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
+import { Send, Loader2, Bot, ChevronDown, ChevronUp } from 'lucide-react'
+import type { CodeEditorHandle } from './CodeEditor'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
 }
 
-type ContextMode = 'none' | 'element' | 'page' | 'all'
+export interface AIAssistantHandle {
+  appendContext: (text: string) => void
+}
 
-export default function AIAssistant() {
-  const { editor } = useAppStore()
-  const [open, setOpen] = useState(false)
+interface Props {
+  editorRef: React.RefObject<CodeEditorHandle | null>
+  getCurrentCode: () => string
+}
+
+const SYSTEM_PROMPT = `你是一个 HTML 演示文档助手。用户会给你当前页面的完整 HTML 代码，以及可能框选的部分代码片段作为上下文。
+你的任务是根据用户的指令修改代码。
+
+规则：
+1. 只输出修改后的完整 HTML 代码，用 \`\`\`html ... \`\`\` 包裹
+2. 不要输出任何解释，除非用户明确要求解释
+3. 保持代码结构清晰，使用 CSS 变量（--primary 等）和全局类（.page .card 等）
+4. 如果用户只是问问题而不是要修改代码，正常回答即可，不需要输出代码`
+
+async function callAI(endpoint: string, apiKey: string, model: string, messages: Message[], system: string): Promise<string> {
+  const isAnthropic = endpoint.includes('anthropic.com')
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  let body: object
+  if (isAnthropic) {
+    headers['x-api-key'] = apiKey
+    headers['anthropic-version'] = '2023-06-01'
+    body = { model, max_tokens: 8192, system, messages }
+  } else {
+    headers['Authorization'] = `Bearer ${apiKey}`
+    body = { model, messages: [{ role: 'system', content: system }, ...messages] }
+  }
+  const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`)
+  const data = await res.json()
+  return isAnthropic ? data.content[0].text : data.choices[0].message.content
+}
+
+const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ editorRef, getCurrentCode }, ref) {
+  const [open, setOpen] = useState(true)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [contextMode, setContextMode] = useState<ContextMode>('element')
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('atag-api-key') || '')
-  const [apiEndpoint, setApiEndpoint] = useState(() => localStorage.getItem('atag-api-endpoint') || 'https://api.openai.com/v1/chat/completions')
-  const [model, setModel] = useState(() => localStorage.getItem('atag-model') || 'gpt-4o')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const saveSettings = () => {
-    localStorage.setItem('atag-api-key', apiKey)
-    localStorage.setItem('atag-api-endpoint', apiEndpoint)
-    localStorage.setItem('atag-model', model)
-  }
-
-  useEffect(() => {
-    saveSettings()
-  }, [apiKey, apiEndpoint, model])
-
-  const getContext = () => {
-    if (!editor) return ''
-
-    if (contextMode === 'none') return ''
-
-    if (contextMode === 'element') {
-      const selected = editor.getSelected()
-      if (selected) {
-        return `当前选中元素：\n${selected.toHTML()}`
-      }
-      return ''
+  useImperativeHandle(ref, () => ({
+    appendContext: (text: string) => {
+      setOpen(true)
+      setInput(prev => prev ? `${prev}\n\n引用片段：\n\`\`\`\n${text}\n\`\`\`` : `引用片段：\n\`\`\`\n${text}\n\`\`\`\n\n`)
+      setTimeout(() => inputRef.current?.focus(), 100)
     }
+  }))
 
-    if (contextMode === 'page') {
-      const selected = editor.getSelected()
-      if (selected) {
-        let parent = selected.parent()
-        while (parent && !parent.getClasses().includes('page')) {
-          parent = parent.parent()
-        }
-        if (parent) {
-          return `当前页面内容：\n${parent.toHTML()}`
-        }
-      }
-      return ''
-    }
+  const apiKey = localStorage.getItem('atag-api-key') || ''
+  const apiEndpoint = localStorage.getItem('atag-api-endpoint') || 'https://api.openai.com/v1/chat/completions'
+  const model = localStorage.getItem('atag-model') || 'gpt-4o'
 
-    if (contextMode === 'all') {
-      return `完整文档内容：\n${editor.getHtml()}`
-    }
-
-    return ''
-  }
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const handleSend = async () => {
-    if (!input.trim() || !editor) return
-    if (!apiKey) {
-      alert('请先配置 API Key')
-      setShowSettings(true)
-      return
-    }
+    if (!input.trim() || loading) return
+    if (!apiKey) { alert('请先在 AI 生成面板中配置 API Key'); return }
 
-    const userMsg: Message = { role: 'user', content: input }
-    setMessages(prev => [...prev, userMsg])
+    const selection = editorRef.current?.getSelection() || ''
+    const fullCode = getCurrentCode()
+
+    const userContent = selection
+      ? `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n框选的代码片段：\n\`\`\`html\n${selection}\n\`\`\`\n\n指令：${input}`
+      : `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n指令：${input}`
+
+    const newMessages: Message[] = [...messages, { role: 'user', content: userContent }]
+    setMessages(newMessages)
     setInput('')
     setLoading(true)
 
-    const context = getContext()
-    const systemPrompt = `你是 HTML Slide Studio 的 AI 助手。用户正在编辑演示文档，你可以：
-1. 回答关于编辑器使用的问题
-2. 根据用户需求生成 HTML 代码片段（使用 class="page"、"card"、"flow-container" 等）
-3. 优化或修改用户选中的元素
-
-${context ? `\n${context}\n` : ''}
-回复时：
-- 如果生成 HTML 代码，用 \`\`\`html 包裹
-- 保持简洁专业
-- 使用 CSS 变量：var(--primary), var(--bg-card) 等`
-
     try {
-      const res = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages.map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: input },
-          ],
-          max_tokens: 2000,
-          temperature: 0.7,
-        }),
-      })
+      const reply = await callAI(apiEndpoint, apiKey, model, newMessages, SYSTEM_PROMPT)
+      setMessages(m => [...m, { role: 'assistant', content: reply }])
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const data = await res.json()
-      const reply = data.choices?.[0]?.message?.content || '无响应'
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
-    } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `错误: ${err.message}` }])
+      // 如果回复包含代码块，自动应用
+      const match = reply.match(/```html?\n([\s\S]*?)```/)
+      if (match) editorRef.current?.replaceAll(match[1].trim())
+    } catch (e: any) {
+      setMessages(m => [...m, { role: 'assistant', content: `错误：${e.message}` }])
     } finally {
       setLoading(false)
     }
   }
 
-  const applyCode = (code: string) => {
-    if (!editor) return
-    const selected = editor.getSelected()
-    if (selected) {
-      selected.replaceWith(code)
-    } else {
-      editor.addComponents(code)
-    }
-  }
-
   return (
-    <>
-      {/* 悬浮按钮 */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#0066FF] to-[#00D9FF] text-white shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center z-40"
-          title="AI 助手"
-        >
-          <MessageSquare size={24} />
-        </button>
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--atag-border)', background: 'var(--atag-bg-panel)', height: open ? '260px' : '36px', flexShrink: 0, transition: 'height .2s' }}>
+      {/* 标题栏 */}
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', height: 36, cursor: 'pointer', flexShrink: 0, borderBottom: open ? '1px solid var(--atag-border)' : 'none' }}
+      >
+        <Bot size={14} color="var(--atag-primary)" />
+        <span style={{ fontSize: 12, color: 'var(--atag-text-muted)', flex: 1 }}>AI 助手</span>
+        {open ? <ChevronDown size={13} color="var(--atag-text-muted)" /> : <ChevronUp size={13} color="var(--atag-text-muted)" />}
+      </div>
 
-      {/* 侧边抽屉 */}
       {open && (
-        <div className="fixed right-0 top-0 bottom-0 w-96 bg-[var(--atag-bg-panel)] border-l border-[var(--atag-border)] flex flex-col z-50 shadow-2xl">
-          {/* 头部 */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--atag-border)] shrink-0">
-            <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-[var(--atag-primary)]" />
-              <span className="text-sm font-medium">AI 助手</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="text-[var(--atag-text-muted)] hover:text-[var(--atag-text)]"
-                title="设置"
-              >
-                <Settings size={18} />
-              </button>
-              <button onClick={() => setOpen(false)} className="text-[var(--atag-text-muted)] hover:text-[var(--atag-text)]">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* 设置面板 */}
-          {showSettings && (
-            <div className="p-4 border-b border-[var(--atag-border)] bg-[var(--atag-bg-card)] space-y-3 shrink-0">
-              <div>
-                <label className="text-xs text-[var(--atag-text-muted)] block mb-1">API Endpoint</label>
-                <input
-                  className="w-full bg-[var(--atag-bg-panel)] border border-[var(--atag-border)] rounded px-2 py-1.5 text-xs text-[var(--atag-text)] outline-none focus:border-[var(--atag-primary)]"
-                  value={apiEndpoint}
-                  onChange={(e) => setApiEndpoint(e.target.value)}
-                  placeholder="https://api.openai.com/v1/chat/completions"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-[var(--atag-text-muted)] block mb-1">API Key</label>
-                <input
-                  type="password"
-                  className="w-full bg-[var(--atag-bg-panel)] border border-[var(--atag-border)] rounded px-2 py-1.5 text-xs text-[var(--atag-text)] outline-none focus:border-[var(--atag-primary)]"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                />
-              </div>
-              <div>
-                <label className="text-xs text-[var(--atag-text-muted)] block mb-1">模型</label>
-                <input
-                  className="w-full bg-[var(--atag-bg-panel)] border border-[var(--atag-border)] rounded px-2 py-1.5 text-xs text-[var(--atag-text)] outline-none focus:border-[var(--atag-primary)]"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="gpt-4o"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* 上下文模式选择 */}
-          <div className="px-4 py-2 border-b border-[var(--atag-border)] shrink-0">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setContextMode('none')}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                  contextMode === 'none'
-                    ? 'bg-[var(--atag-primary)] text-white'
-                    : 'text-[var(--atag-text-muted)] hover:bg-[var(--atag-bg-card)]'
-                }`}
-                title="无上下文"
-              >
-                <X size={12} />
-                <span>无</span>
-              </button>
-              <button
-                onClick={() => setContextMode('element')}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                  contextMode === 'element'
-                    ? 'bg-[var(--atag-primary)] text-white'
-                    : 'text-[var(--atag-text-muted)] hover:bg-[var(--atag-bg-card)]'
-                }`}
-                title="选中元素"
-              >
-                <Square size={12} />
-                <span>元素</span>
-              </button>
-              <button
-                onClick={() => setContextMode('page')}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                  contextMode === 'page'
-                    ? 'bg-[var(--atag-primary)] text-white'
-                    : 'text-[var(--atag-text-muted)] hover:bg-[var(--atag-bg-card)]'
-                }`}
-                title="当前页面"
-              >
-                <FileText size={12} />
-                <span>页面</span>
-              </button>
-              <button
-                onClick={() => setContextMode('all')}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                  contextMode === 'all'
-                    ? 'bg-[var(--atag-primary)] text-white'
-                    : 'text-[var(--atag-text-muted)] hover:bg-[var(--atag-bg-card)]'
-                }`}
-                title="完整文档"
-              >
-                <Layers size={12} />
-                <span>全部</span>
-              </button>
-            </div>
-          </div>
-
+        <>
           {/* 消息列表 */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {messages.length === 0 && (
-              <div className="text-xs text-[var(--atag-text-muted)] text-center mt-8 space-y-2">
-                <p>💡 使用提示：</p>
-                <p className="mt-2">• 选择上下文模式（无/元素/页面/全部）</p>
-                <p>• 选中元素后提问，或直接输入需求</p>
-                <p>• 例如："优化这段文字"、"生成一个流程图"</p>
-                {!apiKey && (
-                  <p className="mt-4 text-[var(--atag-primary)]">⚠️ 请先点击设置图标配置 API</p>
-                )}
+              <div style={{ fontSize: 12, color: 'var(--atag-text-muted)', opacity: .6, textAlign: 'center', marginTop: 16 }}>
+                框选代码后输入指令，AI 将修改当前页面
               </div>
             )}
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
-                  msg.role === 'user'
-                    ? 'bg-[var(--atag-primary)] text-white'
-                    : 'bg-[var(--atag-bg-card)] text-[var(--atag-text)] border border-[var(--atag-border)]'
-                }`}>
-                  {msg.content.includes('```html') ? (
-                    <div>
-                      <pre className="whitespace-pre-wrap font-mono text-xs mb-2">{msg.content}</pre>
-                      <button
-                        onClick={() => {
-                          const match = msg.content.match(/```html\n([\s\S]*?)\n```/)
-                          if (match) applyCode(match[1])
-                        }}
-                        className="text-xs px-2 py-1 bg-[var(--atag-primary)] text-white rounded hover:opacity-90"
-                      >
-                        应用到画布
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  )}
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '85%', padding: '6px 10px', borderRadius: 8, fontSize: 12, lineHeight: 1.5,
+                  background: m.role === 'user' ? 'rgba(0,102,255,0.25)' : 'rgba(255,255,255,0.06)',
+                  color: 'var(--atag-text)',
+                  border: '1px solid ' + (m.role === 'user' ? 'rgba(0,102,255,0.4)' : 'rgba(255,255,255,0.08)'),
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>
+                  {m.role === 'user'
+                    ? m.content.replace(/当前页面完整代码：[\s\S]*?```\n\n(框选的代码片段：[\s\S]*?```\n\n)?指令：/, '')
+                    : (m.content.includes('```') ? '✓ 代码已更新' : m.content)
+                  }
                 </div>
               </div>
             ))}
             {loading && (
-              <div className="flex justify-start">
-                <div className="bg-[var(--atag-bg-card)] border border-[var(--atag-border)] rounded-lg px-3 py-2">
-                  <Loader2 size={14} className="animate-spin text-[var(--atag-primary)]" />
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--atag-text-muted)' }}>
+                <Loader2 size={12} className="animate-spin" />生成中...
               </div>
             )}
-            <div ref={messagesEndRef} />
+            <div ref={bottomRef} />
           </div>
 
           {/* 输入框 */}
-          <div className="p-3 border-t border-[var(--atag-border)] shrink-0">
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-[var(--atag-bg-card)] border border-[var(--atag-border)] rounded-lg px-3 py-2 text-xs text-[var(--atag-text)] outline-none focus:border-[var(--atag-primary)]"
-                placeholder="输入消息..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                disabled={loading}
-              />
-              <button
-                onClick={handleSend}
-                disabled={loading || !input.trim()}
-                className="px-3 py-2 bg-gradient-to-r from-[#0066FF] to-[#00D9FF] text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                <Send size={16} />
-              </button>
-            </div>
+          <div style={{ display: 'flex', gap: 6, padding: '6px 10px', borderTop: '1px solid var(--atag-border)', flexShrink: 0 }}>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="输入指令，如：把标题改为红色..."
+              style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--atag-border)', borderRadius: 6, padding: '5px 10px', fontSize: 12, color: 'var(--atag-text)', outline: 'none' }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={loading || !input.trim()}
+              style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--atag-primary)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: loading || !input.trim() ? .5 : 1 }}
+            >
+              <Send size={13} color="#fff" />
+            </button>
           </div>
-        </div>
+        </>
       )}
-    </>
+    </div>
   )
-}
+})
+
+export default AIAssistant
