@@ -30,7 +30,7 @@ const p=document.querySelector('.page');
 if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');else e.target.classList.remove('visible')})},{threshold:0.4});io.observe(p);}
 document.addEventListener('contextmenu',e=>{
   const sel=window.getSelection()?.toString().trim();
-  if(sel) parent.postMessage({type:'quote-selection',text:sel,x:e.clientX,y:e.clientY},'*');
+  if(sel){e.preventDefault();parent.postMessage({type:'quote-selection',text:sel,x:e.clientX,y:e.clientY},'*');}
 });
 <\/script>
 </body></html>`
