@@ -47,6 +47,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
   const [open, setOpen] = useState(true)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [quotedContext, setQuotedContext] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,7 +55,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
   useImperativeHandle(ref, () => ({
     appendContext: (text: string) => {
       setOpen(true)
-      setInput(prev => prev ? `${prev}\n\n引用片段：\n\`\`\`\n${text}\n\`\`\`` : `引用片段：\n\`\`\`\n${text}\n\`\`\`\n\n`)
+      setQuotedContext(text)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }))
@@ -71,14 +72,16 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
 
     const selection = editorRef.current?.getSelection() || ''
     const fullCode = getCurrentCode()
+    const ctx = quotedContext || selection
 
-    const userContent = selection
-      ? `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n框选的代码片段：\n\`\`\`html\n${selection}\n\`\`\`\n\n指令：${input}`
+    const userContent = ctx
+      ? `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n引用片段：\n\`\`\`\n${ctx}\n\`\`\`\n\n指令：${input}`
       : `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n指令：${input}`
 
     const newMessages: Message[] = [...messages, { role: 'user', content: userContent }]
     setMessages(newMessages)
     setInput('')
+    setQuotedContext(null)
     setLoading(true)
 
     try {
@@ -126,7 +129,20 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
                   whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                 }}>
                   {m.role === 'user'
-                    ? m.content.replace(/当前页面完整代码：[\s\S]*?```\n\n(框选的代码片段：[\s\S]*?```\n\n)?指令：/, '')
+                    ? (() => {
+                        const clean = m.content.replace(/当前页面完整代码：[\s\S]*?```\n\n/, '')
+                        const quoteMatch = clean.match(/^引用片段：\n```\n([\s\S]*?)\n```\n\n指令：([\s\S]*)$/)
+                        const plainMatch = clean.match(/^指令：([\s\S]*)$/)
+                        if (quoteMatch) return (
+                          <>
+                            <div style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'rgba(0,217,255,0.15)', border: '1px solid rgba(0,217,255,0.3)', color: '#00D9FF', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              引用：{quoteMatch[1].slice(0, 60)}{quoteMatch[1].length > 60 ? '…' : ''}
+                            </div>
+                            {quoteMatch[2]}
+                          </>
+                        )
+                        return plainMatch ? plainMatch[1] : clean
+                      })()
                     : (m.content.includes('```') ? '✓ 代码已更新' : m.content)
                   }
                 </div>
@@ -140,6 +156,14 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
             <div ref={bottomRef} />
           </div>
 
+          {/* 引用块 */}
+          {quotedContext && (
+            <div style={{ margin: '0 10px 4px', padding: '5px 10px', borderRadius: 6, background: 'rgba(0,217,255,0.08)', border: '1px solid rgba(0,217,255,0.25)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <span style={{ fontSize: 11, color: '#00D9FF', flexShrink: 0, marginTop: 1 }}>引用</span>
+              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quotedContext}</span>
+              <button onClick={() => setQuotedContext(null)} style={{ background: 'none', border: 'none', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
+            </div>
+          )}
           {/* 输入框 */}
           <div style={{ display: 'flex', gap: 6, padding: '6px 10px', borderTop: '1px solid var(--atag-border)', flexShrink: 0 }}>
             <input

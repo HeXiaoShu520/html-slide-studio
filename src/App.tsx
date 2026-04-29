@@ -28,11 +28,17 @@ export default function App() {
 
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
-  // 预览区右键菜单：点击其他地方关闭
+  // 预览区右键菜单：监听 iframe postMessage + 点击关闭
   useEffect(() => {
     const hide = () => setCtxMenu(null)
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'quote-selection') {
+        setCtxMenu({ x: e.data.x, y: e.data.y, text: e.data.text })
+      }
+    }
     window.addEventListener('click', hide)
-    return () => window.removeEventListener('click', hide)
+    window.addEventListener('message', onMsg)
+    return () => { window.removeEventListener('click', hide); window.removeEventListener('message', onMsg) }
   }, [])
 
   return (
@@ -58,14 +64,7 @@ export default function App() {
           />
         </div>
         {/* 右侧：预览区 */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', position: 'relative' }}
-          onContextMenu={(e) => {
-            const sel = window.getSelection()?.toString().trim()
-            if (!sel) return
-            e.preventDefault()
-            setCtxMenu({ x: e.clientX, y: e.clientY, text: sel })
-          }}
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--atag-border)', background: 'var(--atag-bg-panel)', flexShrink: 0 }}>
             <button
               onClick={() => currentSlide && setPreviewHtml(buildSlideHtml(currentSlide.html, globalCss, themeCSS))}
