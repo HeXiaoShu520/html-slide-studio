@@ -97,10 +97,6 @@ export default function App() {
               onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName))}
               style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
             ><Play size={13} />播放全文</button>
-            <button
-              onClick={() => currentSlide && aiRef.current?.appendContext('当前页面HTML：\n' + currentSlide.html)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12, marginLeft: 'auto' }}
-            >引用当前页</button>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {currentSlide && (
