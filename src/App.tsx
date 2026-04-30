@@ -49,7 +49,7 @@ export default function App() {
     // 阻止 iframe 元素上的原生右键菜单
     const blockCtx = (e: MouseEvent) => {
       const iframe = previewRef.current?.getIframe()
-      if (iframe && (e.target === iframe || iframe.contains(e.target as Node))) {
+      if (iframe && e.target === iframe) {
         e.preventDefault()
       }
     }
