@@ -43,22 +43,13 @@ const DEFAULT_HTML = `<style>
   </div>
 </div>`
 
-function persist(state: Pick<AppState, 'projectName' | 'currentTheme' | 'globalCss' | 'slides'>) {
-  try { localStorage.setItem('hss-project', JSON.stringify(state)) } catch { /* ignore */ }
-}
-
-function load(): Partial<AppState> {
-  try { return JSON.parse(localStorage.getItem('hss-project') || '{}') } catch { return {} }
-}
-
-const saved = load()
 
 export const useAppStore = create<AppState>((set) => ({
-  slides: saved.slides?.length ? saved.slides : [{ id: crypto.randomUUID(), title: '第 1 页', html: DEFAULT_HTML }],
+  slides: [{ id: crypto.randomUUID(), title: '第 1 页', html: DEFAULT_HTML }],
   currentSlideIndex: 0,
-  projectName: saved.projectName || '未命名项目',
-  currentTheme: (saved.currentTheme as ThemeId) || 'dark-tech',
-  globalCss: saved.globalCss || '',
+  projectName: '未命名项目',
+  currentTheme: 'dark-tech',
+  globalCss: '',
   previewHtml: null,
   showAIPanel: false,
 
@@ -66,7 +57,6 @@ export const useAppStore = create<AppState>((set) => ({
 
   updateCurrentSlide: (html) => set(s => {
     const slides = s.slides.map((sl, i) => i === s.currentSlideIndex ? { ...sl, html } : sl)
-    persist({ projectName: s.projectName, currentTheme: s.currentTheme, globalCss: s.globalCss, slides })
     return { slides }
   }),
 
@@ -77,7 +67,6 @@ export const useAppStore = create<AppState>((set) => ({
       html: `<div class="page">\n  <h2>新页面</h2>\n  <p>在此编辑内容</p>\n</div>`,
     }]
     const currentSlideIndex = slides.length - 1
-    persist({ projectName: s.projectName, currentTheme: s.currentTheme, globalCss: s.globalCss, slides })
     return { slides, currentSlideIndex }
   }),
 
@@ -85,30 +74,19 @@ export const useAppStore = create<AppState>((set) => ({
     if (s.slides.length <= 1) return {}
     const slides = s.slides.filter(sl => sl.id !== id)
     const currentSlideIndex = Math.min(s.currentSlideIndex, slides.length - 1)
-    persist({ projectName: s.projectName, currentTheme: s.currentTheme, globalCss: s.globalCss, slides })
     return { slides, currentSlideIndex }
   }),
 
-  setProjectName: (projectName) => set(s => {
-    persist({ projectName, currentTheme: s.currentTheme, globalCss: s.globalCss, slides: s.slides })
-    return { projectName }
-  }),
+  setProjectName: (projectName) => set({ projectName }),
 
-  setTheme: (currentTheme) => set(s => {
-    persist({ projectName: s.projectName, currentTheme, globalCss: s.globalCss, slides: s.slides })
-    return { currentTheme }
-  }),
+  setTheme: (currentTheme) => set({ currentTheme }),
 
-  setGlobalCss: (globalCss) => set(s => {
-    persist({ projectName: s.projectName, currentTheme: s.currentTheme, globalCss, slides: s.slides })
-    return { globalCss }
-  }),
+  setGlobalCss: (globalCss) => set({ globalCss }),
 
   setPreviewHtml: (previewHtml) => set({ previewHtml }),
   setShowAIPanel: (showAIPanel) => set({ showAIPanel }),
 
   setSlides: (slides) => set(s => {
-    persist({ projectName: s.projectName, currentTheme: s.currentTheme, globalCss: s.globalCss, slides })
     return { slides, currentSlideIndex: 0 }
   }),
 }))

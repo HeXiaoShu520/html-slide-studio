@@ -13,6 +13,10 @@ document.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRi
 `
 
 export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: string): string {
+  // 完整 HTML 文档直接原样渲染，不套壳
+  if (/^\s*<!DOCTYPE\s/i.test(slideHtml) || /^\s*<html[\s>]/i.test(slideHtml)) {
+    return slideHtml
+  }
   // 给每个顶层标签注入 data-line 行号，供高亮同步使用
   let lineNum = 1
   const annotated = slideHtml
@@ -26,20 +30,26 @@ export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: s
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>${themeCSS}${globalCss}
-.replay-btn{position:fixed;bottom:20px;right:20px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:15px;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:999}
-.replay-btn:hover{background:rgba(0,102,255,0.6)}
+.page{position:relative}
+.pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px);white-space:nowrap}
+.pnav button:hover{background:rgba(0,102,255,0.6)}
 [data-hl]{outline:2px solid rgba(0,153,255,0.8)!important;outline-offset:2px;box-shadow:0 0 0 4px rgba(0,153,255,0.15)!important;transition:outline .15s,box-shadow .15s}
 </style>
 </head><body style="margin:0">${annotated}
-<button class="replay-btn" onclick="(function(){const p=document.querySelector('.page');if(!p)return;p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})()" title="重播动画 (空格)">↺</button>
+<div class="pnav"><button onclick="go(-1)">上一页</button><button onclick="replayPage()">播放</button><button onclick="go(1)">下一页</button></div>
 <script>
 const p=document.querySelector('.page');
 if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');else e.target.classList.remove('visible')})},{threshold:0.4});io.observe(p);}
-function replay(){const pg=document.querySelector('.page');if(!pg)return;pg.classList.remove('visible');void pg.offsetWidth;pg.classList.add('visible')}
-document.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();replay();}});
+function go(d){parent.postMessage({type:'slide-nav',d},'*')}
+function replayPage(){const pg=document.querySelector('.page');if(!pg)return;pg.classList.remove('visible');document.querySelectorAll('.animate-in,.animate-fade,.animate-left,.animate-right').forEach(el=>el.classList.remove('visible'));void pg.offsetWidth;pg.classList.add('visible');document.querySelectorAll('.animate-in,.animate-fade,.animate-left,.animate-right').forEach(el=>el.classList.add('visible'));}
+document.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();replayPage();}});
 document.addEventListener('contextmenu',e=>{
+  e.preventDefault();
   const sel=window.getSelection()?.toString().trim();
-  if(sel){e.preventDefault();parent.postMessage({type:'iframe-contextmenu',text:sel,x:e.clientX,y:e.clientY},'*');}
+  const elText=(e.target?.closest('[data-line]')||e.target)?.textContent?.trim()||'';
+  const text=sel||elText;
+  if(text)parent.postMessage({type:'iframe-contextmenu',sel:sel||'',elText,x:e.clientX,y:e.clientY},'*');
 });
 window.addEventListener('message',e=>{
   if(e.data?.type!=='highlight-line')return;
@@ -70,7 +80,7 @@ body{margin:0;overflow:hidden}
 .pw{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory}
 .page{scroll-snap-align:start}
 .pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999}
-.pnav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:16px;backdrop-filter:blur(8px)}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px);white-space:nowrap}
 .pnav button:hover{background:rgba(0,102,255,0.6)}
 .pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999}
 body{overflow:hidden}
@@ -78,7 +88,7 @@ ${themeCSS}${globalCss}
 </style>
 </head><body>
 <div class="pw" id="pw">${allHtml}</div>
-<div class="pnav"><button onclick="go(-1)">↑</button><button onclick="replayPage()">↺</button><button onclick="go(1)">↓</button></div>
+<div class="pnav"><button onclick="go(-1)">上一页</button><button onclick="replayPage()">播放</button><button onclick="go(1)">下一页</button></div>
 <div class="pc" id="pc">1 / ${slides.length}</div>
 <script>${PRESENT_SCRIPT}<\/script>
 </body></html>`

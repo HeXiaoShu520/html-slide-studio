@@ -1,4 +1,4 @@
-import { Play, Download, Sparkles, FolderOpen } from 'lucide-react'
+import { Play, Download, Sparkles, FolderOpen, FilePlus } from 'lucide-react'
 import { useAppStore, type ThemeId } from '../store/useAppStore'
 import { getThemeCSS } from '../themes/themeCSS'
 import { buildPresentHtml } from '../utils/buildSlideHtml'
@@ -39,7 +39,19 @@ export default function TopBar() {
       if (pages.length === 0) return alert('未找到 .page 元素')
       const { setSlides, setProjectName } = useAppStore.getState()
       setProjectName(file.name.replace(/\.html$/, ''))
-      setSlides(pages.map((p, i) => ({ id: crypto.randomUUID(), title: `第 ${i + 1} 页`, html: p.outerHTML })))
+      const rawStyles = [...doc.querySelectorAll('style')].map(s => s.textContent || '').join('\n')
+      const scripts = [...doc.querySelectorAll('script:not([src])')].map(s => s.outerHTML).join('\n')
+      setSlides(pages.map((p, i) => {
+        const pid = `pg-${Date.now()}-${i}`
+        p.id = pid
+        // 给每页样式加作用域：.page -> #pid.page，避免多页冲突
+        const scopedCss = rawStyles.replace(/\.page\b/g, `#${pid}.page`)
+        return {
+          id: crypto.randomUUID(),
+          title: `第 ${i + 1} 页`,
+          html: `<style>${scopedCss}</style>\n${p.outerHTML}\n${scripts}`,
+        }
+      }))
     }
     input.click()
   }
