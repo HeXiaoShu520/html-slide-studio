@@ -42,7 +42,7 @@ export default function App() {
         const rect = previewRef.current?.getIframeRect()
         const x = (rect?.left ?? 0) + e.data.x
         const y = (rect?.top ?? 0) + e.data.y
-        const text = e.data.sel || e.data.text
+        const text = e.data.text
         if (text) setCtxMenu({ x, y, text })
       }
     }

@@ -38,15 +38,17 @@ if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isInt
 function replay(){const pg=document.querySelector('.page');if(!pg)return;pg.classList.remove('visible');void pg.offsetWidth;pg.classList.add('visible')}
 document.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();replay();}});
 document.addEventListener('contextmenu',e=>{
-  const sel=window.getSelection()?.toString().trim();
-  if(!sel)return;
   e.preventDefault();
+  const sel=window.getSelection()?.toString().trim();
   const el=e.target;
   const outerHtml=el?.outerHTML?.slice(0,500)||'';
   const tag=el?.tagName?.toLowerCase()||'';
   const cls=el?.className||'';
-  const context='选中文字：'+sel+'\n所在元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\nHTML：'+outerHtml;
-  parent.postMessage({type:'iframe-contextmenu',text:context,sel,x:e.clientX,y:e.clientY},'*');
+  const text=sel||(el?.innerText||el?.textContent||'').trim().slice(0,200);
+  const context=sel
+    ? '选中文字：'+sel+'\n所在元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\nHTML：'+outerHtml
+    : '元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\n内容：'+text+'\nHTML：'+outerHtml;
+  parent.postMessage({type:'iframe-contextmenu',text:context,sel:sel||'',x:e.clientX,y:e.clientY},'*');
 });
 window.addEventListener('message',e=>{
   if(e.data?.type!=='highlight-line')return;
