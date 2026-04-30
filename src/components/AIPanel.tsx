@@ -71,15 +71,27 @@ document.querySelector('.title').textContent = config.title
 
 --primary, --primary-light, --bg-main, --bg-card, --text-color, --gradient
 
-## 重播按钮（必须）
+## 交互控制（必须遵守）
 
-每个 .page 内必须在右下角放置重播按钮：
+**动画播放**：
+- 动画不自动播放，必须由用户主动触发（点击重播按钮或按空格键）
+- 使用 '.visible' 类控制动画：初始无 '.visible'，触发后添加 '.visible' 启动动画
+- 重复点击重播按钮可重复播放
+
+**翻页控制**：
+- 禁止滚轮翻页
+- 支持键盘方向键（↑↓←→）翻页
+- 每页右下角必须有重播按钮（↺），空格键等效
+
+**重播按钮（每页必须）**：
+
+每个 .page 内右下角放置：
 
 \`\`\`html
-<button onclick="(function(){const p=this.closest('.page');p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')}).call(this)" style="position:absolute;bottom:16px;right:16px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:14px;backdrop-filter:blur(8px)" title="重播动画">↺</button>
+<button onclick="(function(p){p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})(this.closest('.page'))" style="position:absolute;bottom:16px;right:16px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:14px;backdrop-filter:blur(8px)" title="重播动画 (空格)">↺</button>
 \`\`\`
 
-每个 .page 必须设置 position:relative（或已有定位）。
+每个 .page 必须设置 position:relative。
 
 ## 设计原则
 

@@ -9,9 +9,7 @@ const io=new IntersectionObserver(entries=>{
 pages.forEach(p=>io.observe(p));
 function go(d){cur=Math.max(0,Math.min(pages.length-1,cur+d));pages[cur].scrollIntoView({behavior:'smooth'});const c=document.getElementById('pc');if(c)c.textContent=(cur+1)+' / '+pages.length}
 function replayPage(){const p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')}
-let wheelLock=false;
-document.addEventListener('wheel',e=>{e.preventDefault();if(wheelLock)return;wheelLock=true;setTimeout(()=>wheelLock=false,600);go(e.deltaY>0?1:-1)},{passive:false});
-document.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowUp'||e.key==='ArrowLeft')go(-1)});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRight')go(1);if(e.key==='ArrowUp'||e.key==='ArrowLeft')go(-1);if(e.key===' '){e.preventDefault();replayPage();}});
 `
 
 export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: string): string {
@@ -32,15 +30,16 @@ export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: s
 [data-hl]{outline:2px solid rgba(0,153,255,0.8)!important;outline-offset:2px;box-shadow:0 0 0 4px rgba(0,153,255,0.15)!important;transition:outline .15s,box-shadow .15s}
 </style>
 </head><body style="margin:0">${annotated}
-<button class="replay-btn" onclick="(function(){const p=document.querySelector('.page');if(!p)return;p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})()" title="重播动画">↺</button>
+<button class="replay-btn" onclick="(function(){const p=document.querySelector('.page');if(!p)return;p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})()" title="重播动画 (空格)">↺</button>
 <script>
 const p=document.querySelector('.page');
 if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');else e.target.classList.remove('visible')})},{threshold:0.4});io.observe(p);}
+function replay(){const pg=document.querySelector('.page');if(!pg)return;pg.classList.remove('visible');void pg.offsetWidth;pg.classList.add('visible')}
+document.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();replay();}});
 document.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const sel=window.getSelection()?.toString().trim();
   const el=e.target;
-  const tag=el?.tagName?.toLowerCase();
   const text=sel||(el?.innerText||el?.textContent||'').trim().slice(0,200);
   parent.postMessage({type:'iframe-contextmenu',text,sel,x:e.clientX,y:e.clientY},'*');
 });
@@ -76,6 +75,7 @@ body{margin:0;overflow:hidden}
 .pnav button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:16px;backdrop-filter:blur(8px)}
 .pnav button:hover{background:rgba(0,102,255,0.6)}
 .pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999}
+body{overflow:hidden}
 ${themeCSS}${globalCss}
 </style>
 </head><body>
