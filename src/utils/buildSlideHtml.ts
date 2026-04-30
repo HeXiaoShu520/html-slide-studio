@@ -38,6 +38,7 @@ function replay(){const pg=document.querySelector('.page');if(!pg)return;pg.clas
 document.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();replay();}});
 document.addEventListener('contextmenu',e=>{
   e.preventDefault();
+  e.stopPropagation();
   const sel=window.getSelection()?.toString().trim();
   const el=e.target;
   const outerHtml=el?.outerHTML?.slice(0,500)||'';
@@ -48,7 +49,7 @@ document.addEventListener('contextmenu',e=>{
     ? '选中文字：'+sel
     : '元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\n内容：'+text+'\nHTML：'+outerHtml;
   parent.postMessage({type:'iframe-contextmenu',text:context,sel,x:e.clientX,y:e.clientY},'*');
-});
+},true);
 window.addEventListener('message',e=>{
   if(e.data?.type!=='highlight-line')return;
   const line=e.data.line;

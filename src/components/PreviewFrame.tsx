@@ -29,6 +29,7 @@ const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(({ slideHtml, globalC
       ref={iframeRef}
       srcDoc={srcdoc}
       sandbox="allow-scripts allow-same-origin"
+      onContextMenu={e => e.preventDefault()}
       style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
       title="preview"
     />
