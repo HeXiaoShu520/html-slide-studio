@@ -40,8 +40,14 @@ document.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const sel=window.getSelection()?.toString().trim();
   const el=e.target;
+  const outerHtml=el?.outerHTML?.slice(0,500)||'';
+  const tag=el?.tagName?.toLowerCase()||'';
+  const cls=el?.className||'';
   const text=sel||(el?.innerText||el?.textContent||'').trim().slice(0,200);
-  parent.postMessage({type:'iframe-contextmenu',text,sel,x:e.clientX,y:e.clientY},'*');
+  const context=sel
+    ? '选中文字：'+sel
+    : '元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\n内容：'+text+'\nHTML：'+outerHtml;
+  parent.postMessage({type:'iframe-contextmenu',text:context,sel,x:e.clientX,y:e.clientY},'*');
 });
 window.addEventListener('message',e=>{
   if(e.data?.type!=='highlight-line')return;
