@@ -37,20 +37,10 @@ const p=document.querySelector('.page');
 if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');else e.target.classList.remove('visible')})},{threshold:0.4});io.observe(p);}
 function replay(){const pg=document.querySelector('.page');if(!pg)return;pg.classList.remove('visible');void pg.offsetWidth;pg.classList.add('visible')}
 document.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();replay();}});
-document.addEventListener('mousedown',e=>{
-  if(e.button!==2)return;
+document.addEventListener('contextmenu',e=>{
   const sel=window.getSelection()?.toString().trim();
-  const el=e.target;
-  const outerHtml=el?.outerHTML?.slice(0,500)||'';
-  const tag=el?.tagName?.toLowerCase()||'';
-  const cls=el?.className||'';
-  const text=sel||(el?.innerText||el?.textContent||'').trim().slice(0,200);
-  const context=sel
-    ? '选中文字：'+sel+'\n所在元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\nHTML：'+outerHtml
-    : '元素：<'+tag+(cls?' class="'+cls+'"':'')+'>\n内容：'+text+'\nHTML：'+outerHtml;
-  parent.postMessage({type:'iframe-contextmenu',text:context,x:e.clientX,y:e.clientY},'*');
+  if(sel){e.preventDefault();parent.postMessage({type:'iframe-contextmenu',text:sel,x:e.clientX,y:e.clientY},'*');}
 });
-document.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('message',e=>{
   if(e.data?.type!=='highlight-line')return;
   const line=e.data.line;
