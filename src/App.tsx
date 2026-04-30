@@ -17,7 +17,8 @@ export default function App() {
   const aiRef = useRef<AIAssistantHandle>(null)
   const previewRef = useRef<PreviewFrameHandle>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; sel: string; elText: string } | null>(null)
+  const ctxMenuRef = useRef<HTMLDivElement>(null)
 
   const currentSlide = slides[currentSlideIndex]
   const themeCSS = getThemeCSS(currentTheme)
@@ -37,13 +38,27 @@ export default function App() {
   // 预览区右键菜单：监听 iframe postMessage + 点击关闭
   useEffect(() => {
     const hide = () => setCtxMenu(null)
+    let hideTimer: ReturnType<typeof setTimeout> | null = null
     const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'slide-nav') {
+        const { slides, currentSlideIndex, setCurrentSlideIndex } = useAppStore.getState()
+        const next = Math.max(0, Math.min(slides.length - 1, currentSlideIndex + e.data.d))
+        setCurrentSlideIndex(next)
+        return
+      }
       if (e.data?.type === 'iframe-contextmenu') {
         const rect = previewRef.current?.getIframeRect()
         const x = (rect?.left ?? 0) + e.data.x
         const y = (rect?.top ?? 0) + e.data.y
-        const text = e.data.text
-        if (text) setCtxMenu({ x, y, text })
+        const sel = e.data.sel ?? ''
+        const elText = e.data.elText ?? ''
+        if (sel || elText) {
+          if (useAppStore.getState().previewHtml) return
+          if (hideTimer) clearTimeout(hideTimer)
+          setCtxMenu({ x, y, sel, elText })
+          // 延迟注册 click 关闭，避免当前右键事件链触发
+          hideTimer = setTimeout(() => window.addEventListener('click', hide, { once: true }), 100)
+        }
       }
     }
     // 阻止 iframe 元素上的原生右键菜单
@@ -53,10 +68,10 @@ export default function App() {
         e.preventDefault()
       }
     }
-    window.addEventListener('click', hide)
     window.addEventListener('message', onMsg)
     window.addEventListener('contextmenu', blockCtx, true)
     return () => {
+      if (hideTimer) clearTimeout(hideTimer)
       window.removeEventListener('click', hide)
       window.removeEventListener('message', onMsg)
       window.removeEventListener('contextmenu', blockCtx, true)
@@ -96,7 +111,7 @@ export default function App() {
             <button
               onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName))}
               style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
-            ><Play size={13} />播放全文</button>
+            ><Play size={13} />预览全文</button>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {currentSlide && (
@@ -130,17 +145,22 @@ export default function App() {
       {/* 预览区右键菜单 */}
       {ctxMenu && (
         <div
-          onClick={e => e.stopPropagation()}
+          ref={ctxMenuRef}
           style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 2000, background: 'var(--atag-bg-panel)', border: '1px solid var(--atag-border)', borderRadius: 8, padding: '4px 0', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', minWidth: 160 }}
         >
-          <button
-            onClick={() => { aiRef.current?.appendContext(ctxMenu.text); setCtxMenu(null) }}
-            style={{ display: 'block', width: '100%', padding: '7px 14px', background: 'none', border: 'none', color: 'var(--atag-text)', fontSize: 13, textAlign: 'left', cursor: 'pointer' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-          >
-            引用到 AI 助手
-          </button>
+          {[
+            ...(ctxMenu.sel ? [{ label: '复制选中内容', action: () => navigator.clipboard.writeText(ctxMenu.sel) }] : []),
+            { label: '复制元素文字', action: () => navigator.clipboard.writeText(ctxMenu.elText) },
+            { label: '引用到 AI 助手', action: () => aiRef.current?.appendContext(ctxMenu.sel || ctxMenu.elText, !ctxMenu.sel) },
+          ].map(item => (
+            <button
+              key={item.label}
+              onClick={() => { item.action(); setCtxMenu(null) }}
+              style={{ display: 'block', width: '100%', padding: '7px 14px', background: 'none', border: 'none', color: 'var(--atag-text)', fontSize: 13, textAlign: 'left', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >{item.label}</button>
+          ))}
         </div>
       )}
     </div>

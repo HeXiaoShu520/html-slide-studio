@@ -74,31 +74,91 @@ document.querySelector('.title').textContent = config.title
 ## 交互控制（必须遵守）
 
 **动画播放**：
-- 动画不自动播放，必须由用户主动触发（点击重播按钮或按空格键）
-- 使用 '.visible' 类控制动画：初始无 '.visible'，触发后添加 '.visible' 启动动画
-- 重复点击重播按钮可重复播放
+- 动画通过 .page.visible 触发：.page 获得 .visible 类时启动动画
+- 可用 JS（setTimeout 序列、IntersectionObserver 等）实现复杂时序动画
+- 可自定义 @keyframes、CSS transition、JS 驱动的动画效果
 
 **翻页控制**：
 - 禁止滚轮翻页
 - 支持键盘方向键（↑↓←→）翻页
-- 每页右下角必须有重播按钮（↺），空格键等效
-
-**重播按钮（每页必须）**：
-
-每个 .page 内右下角放置：
-
-\`\`\`html
-<button onclick="(function(p){p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible')})(this.closest('.page'))" style="position:absolute;bottom:16px;right:16px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:14px;backdrop-filter:blur(8px)" title="重播动画 (空格)">↺</button>
-\`\`\`
+- 导航按钮（上一页/播放/下一页）由系统自动注入到每页右下角（.pnav），**严禁在页面代码里写任何按钮（button、a、图标按钮均不允许）**，包括重播、刷新、replay、redo 等任何形式的交互按钮
+- 可用导航相关全局类：.pnav（固定右下角导航栏）、.pc（页码显示）
 
 每个 .page 必须设置 position:relative。
 
+**CSS 命名隔离**：每页私有 CSS 类名必须加唯一前缀（如页码 p1-、p2-），避免多页共存时冲突。例如：.p1-stage、.p1-node、.p1-bubble。动画触发选择器写成 .page.visible .p1-bubble { animation: ... }。
+
+## 代码规范（必须遵守）
+
+**注释要求**：
+- 代码注释覆盖率不低于 30%，每个重要元素、动画、变量都要有中文注释说明用途
+- <style> 开头写一段总注释，说明本页的视觉主题和动画逻辑
+- 每个 CSS 类定义前加注释，说明它是什么元素、有什么效果
+- 每个 @keyframes 前加注释，描述动画的运动轨迹和视觉效果
+- <script> 开头写注释说明脚本的整体逻辑
+
+**代码分层**（每层之间加空行分隔）：
+1. 顶部总注释块（页面主题、动画说明）
+2. CSS 变量 / 根样式
+3. 布局类（.page、容器、舞台）
+4. 节点 / 元素样式
+5. 动画元素样式（气泡、数据包等）
+6. @keyframes 动画定义
+7. 动画触发规则（.page.visible .xxx）
+
+**示例注释风格**：
+
+/* ── 布局：舞台容器，相对定位，用于放置绝对定位的节点 ── */
+.stage { position: relative; height: 360px; }
+
+/* 左侧节点：Tester 诊断仪，固定在舞台左侧垂直居中 */
+.node-a { left: 5%; top: 50%; transform: translateY(-50%); }
+
+/* 动画：数据包从左向右飞行，模拟报文在总线上传输 */
+@keyframes fly {
+  0%   { opacity: 0; transform: translateX(0); }       /* 起点：左侧，不可见 */
+  12%  { opacity: 1; }                                  /* 淡入出现 */
+  82%  { opacity: 1; transform: translateX(38vw); }    /* 到达右侧 */
+  100% { opacity: 0; transform: translateX(38vw); }    /* 淡出消失 */
+}
+
 ## 设计原则
 
-1. 每页只展示 1-3 个核心要点，保持留白
-2. 使用 emoji 或 Font Awesome 图标（<i class="fas fa-xxx">）
-3. 动画使用全局类（.animate-in 等），不要自定义复杂动画
-4. 每页必须用 class="page" 包裹
+1. 追求视觉精美，优先使用**舞台式绝对定位布局**：节点固定在左右两侧，中间有总线/连接线，气泡/数据包用 @keyframes 动画飞行
+2. 背景使用 radial-gradient 多层渐变，营造深邃科技感
+3. 每页动画只传达一个完整流程或主题；场景复杂时拆成多页分别展示
+4. 使用 emoji 或 Font Awesome 图标（<i class="fas fa-xxx">）
+5. 每页必须用 class="page" 包裹
+
+## 高质量页面示例（参考此风格）
+
+\`\`\`html
+<style>
+  .stage { position:relative; height:360px; border:1px solid rgba(255,255,255,.2); border-radius:24px; background:rgba(255,255,255,.04); }
+  .node { position:absolute; width:160px; padding:16px; border-radius:20px; background:rgba(7,13,31,.8); border:1px solid rgba(255,255,255,.2); text-align:center; }
+  .node-a { left:5%; top:50%; transform:translateY(-50%); }
+  .node-b { right:5%; top:50%; transform:translateY(-50%); }
+  .bus { position:absolute; left:15%; right:15%; top:50%; height:3px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent); }
+  .bubble { position:absolute; padding:12px 14px; border-radius:14px; background:rgba(12,18,42,.9); border:1px solid rgba(91,188,255,.4); opacity:0; transform:translateY(10px) scale(.96); left:25%; top:60px; }
+  .packet { position:absolute; width:48px; height:30px; border-radius:10px; display:grid; place-items:center; font-weight:800; opacity:0; background:linear-gradient(135deg,#5bbcff,#2b65ff); left:180px; top:calc(50% - 15px); }
+  .page.visible .bubble { animation:showB .7s ease .3s forwards; }
+  .page.visible .packet { animation:fly 1.8s cubic-bezier(.35,.02,.18,1) .8s forwards; }
+  @keyframes showB { to { opacity:1; transform:translateY(0) scale(1); } }
+  @keyframes fly { 0%{opacity:0;transform:translateX(0)} 12%{opacity:1} 82%{opacity:1;transform:translateX(calc(100vw*.38))} 100%{opacity:0;transform:translateX(calc(100vw*.38))} }
+</style>
+<div class="page" style="background:radial-gradient(circle at top left,#162a5c 0,transparent 35%),#0b1020; display:flex; align-items:center; justify-content:center;">
+  <div style="max-width:1100px;width:100%">
+    <h1 style="font-size:clamp(26px,4vw,44px);margin:0 0 24px">页面标题</h1>
+    <div class="stage">
+      <div class="bus"></div>
+      <div class="node node-a"><div style="font-size:28px">💻</div><h3>节点A</h3></div>
+      <div class="node node-b"><div style="font-size:28px">🚗</div><h3>节点B</h3></div>
+      <div class="bubble">数据内容</div>
+      <div class="packet">22</div>
+    </div>
+  </div>
+</div>
+\`\`\`
 
 只输出 HTML 代码，不要任何解释文字。`
 

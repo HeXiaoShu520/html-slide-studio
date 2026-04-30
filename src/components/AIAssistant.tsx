@@ -8,7 +8,7 @@ interface Message {
 }
 
 export interface AIAssistantHandle {
-  appendContext: (text: string) => void
+  appendContext: (text: string, isElement?: boolean) => void
 }
 
 interface Props {
@@ -47,15 +47,15 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
   const [open, setOpen] = useState(true)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [quotedContext, setQuotedContext] = useState<string | null>(null)
+  const [quotedContext, setQuotedContext] = useState<{ text: string; isElement: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useImperativeHandle(ref, () => ({
-    appendContext: (text: string) => {
+    appendContext: (text: string, isElement = false) => {
       setOpen(true)
-      setQuotedContext(text)
+      setQuotedContext({ text, isElement })
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }))
@@ -72,10 +72,10 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
 
     const selection = editorRef.current?.getSelection() || ''
     const fullCode = getCurrentCode()
-    const ctx = quotedContext || selection
+    const ctx = quotedContext?.text || selection
 
     const userContent = ctx
-      ? `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n引用片段：\n\`\`\`\n${ctx}\n\`\`\`\n\n指令：${input}`
+      ? `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n${quotedContext?.isElement ? '引用的页面元素内容' : '引用片段'}：\n\`\`\`\n${ctx}\n\`\`\`\n\n指令：${input}`
       : `当前页面完整代码：\n\`\`\`html\n${fullCode}\n\`\`\`\n\n指令：${input}`
 
     const newMessages: Message[] = [...messages, { role: 'user', content: userContent }]
@@ -159,8 +159,8 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
           {/* 引用块 */}
           {quotedContext && (
             <div style={{ margin: '0 10px 4px', padding: '5px 10px', borderRadius: 6, background: 'rgba(0,217,255,0.08)', border: '1px solid rgba(0,217,255,0.25)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#00D9FF', flexShrink: 0, marginTop: 1 }}>引用</span>
-              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quotedContext}</span>
+              <span style={{ fontSize: 11, color: '#00D9FF', flexShrink: 0, marginTop: 1 }}>{quotedContext.isElement ? '元素内容' : '引用'}</span>
+              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quotedContext.text}</span>
               <button onClick={() => setQuotedContext(null)} style={{ background: 'none', border: 'none', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>×</button>
             </div>
           )}
