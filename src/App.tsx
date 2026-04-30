@@ -38,11 +38,12 @@ export default function App() {
   useEffect(() => {
     const hide = () => setCtxMenu(null)
     const onMsg = (e: MessageEvent) => {
-      if (e.data?.type === 'quote-selection') {
+      if (e.data?.type === 'iframe-contextmenu') {
         const rect = previewRef.current?.getIframeRect()
         const x = (rect?.left ?? 0) + e.data.x
         const y = (rect?.top ?? 0) + e.data.y
-        setCtxMenu({ x, y, text: e.data.text })
+        const text = e.data.sel || e.data.text
+        if (text) setCtxMenu({ x, y, text })
       }
     }
     window.addEventListener('click', hide)

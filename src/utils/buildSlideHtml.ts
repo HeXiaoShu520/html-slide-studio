@@ -37,8 +37,12 @@ export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: s
 const p=document.querySelector('.page');
 if(p){const io=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');else e.target.classList.remove('visible')})},{threshold:0.4});io.observe(p);}
 document.addEventListener('contextmenu',e=>{
+  e.preventDefault();
   const sel=window.getSelection()?.toString().trim();
-  if(sel){e.preventDefault();parent.postMessage({type:'quote-selection',text:sel,x:e.clientX,y:e.clientY},'*');}
+  const el=e.target;
+  const tag=el?.tagName?.toLowerCase();
+  const text=sel||(el?.innerText||el?.textContent||'').trim().slice(0,200);
+  parent.postMessage({type:'iframe-contextmenu',text,sel,x:e.clientX,y:e.clientY},'*');
 });
 window.addEventListener('message',e=>{
   if(e.data?.type!=='highlight-line')return;
