@@ -46,9 +46,21 @@ export default function App() {
         if (text) setCtxMenu({ x, y, text })
       }
     }
+    // 阻止 iframe 元素上的原生右键菜单
+    const blockCtx = (e: MouseEvent) => {
+      const iframe = previewRef.current?.getIframe()
+      if (iframe && (e.target === iframe || iframe.contains(e.target as Node))) {
+        e.preventDefault()
+      }
+    }
     window.addEventListener('click', hide)
     window.addEventListener('message', onMsg)
-    return () => { window.removeEventListener('click', hide); window.removeEventListener('message', onMsg) }
+    window.addEventListener('contextmenu', blockCtx, true)
+    return () => {
+      window.removeEventListener('click', hide)
+      window.removeEventListener('message', onMsg)
+      window.removeEventListener('contextmenu', blockCtx, true)
+    }
   }, [])
 
   return (
