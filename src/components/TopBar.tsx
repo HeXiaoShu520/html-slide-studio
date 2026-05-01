@@ -107,23 +107,46 @@ export default function TopBar() {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
       const text = await file.text()
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(text, 'text/html')
-      const pages = [...doc.querySelectorAll('.page')]
-      if (pages.length === 0) return alert('未找到 .page 元素')
       const { setSlides, setProjectName, setTheme } = useAppStore.getState()
       setProjectName(file.name.replace(/\.html$/, ''))
+
+      // 提取 <head> 内的全局样式注入为 globalCss（保留原始配色和基础类）
+      const headMatch = text.match(/<head[\s\S]*?<\/head>/i)
+      const headStyles = headMatch
+        ? [...headMatch[0].matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(m => m[1]).join('\n')
+        : ''
+      if (headStyles.trim()) useAppStore.getState().setGlobalCss(headStyles)
+
+      // 剔除导航块（AI生成的 SLIDE-NAV 标记 或 工具导出注入的 pnav/pc/PRESENT_SCRIPT）
+      const stripNav = (s: string) =>
+        s.replace(/<!--\s*SLIDE-NAV-BEGIN\s*-->[\s\S]*?<!--\s*SLIDE-NAV-END\s*-->/gi, '')
+         .replace(/<div class="pnav">[\s\S]*?<\/div>/g, '')
+         .replace(/<div class="pc"[^>]*>[\s\S]*?<\/div>/g, '')
+         .replace(/<script[^>]*>[\s\S]*?querySelectorAll\('\.page'\)[\s\S]*?<\/script>/gi, '')
+
+      // 优先按 <!-- PAGE --> 分隔符拆分（标准格式）
+      const segments = text.split(/<!--\s*PAGE\s*-->/)
+        .map(s => {
+          s = s.replace(/^[\s\S]*?<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '')
+          return stripNav(s).trim()
+        })
+        .filter(s => s.includes('class="page"') || s.includes("class='page'"))
+      if (segments.length > 0) {
+        setSlides(segments.map((html, i) => ({ id: crypto.randomUUID(), title: `第 ${i + 1} 页`, html })))
+        setTheme('none')
+        return
+      }
+
+      // 回退：DOMParser 查找 .page 元素
+      const doc = new DOMParser().parseFromString(text, 'text/html')
+      const pages = [...doc.querySelectorAll('.page')]
+      if (pages.length === 0) return alert('未找到 .page 元素')
       const rawStyles = [...doc.querySelectorAll('style')].map(s => s.textContent || '').join('\n')
       setSlides(pages.map((p, i) => {
         const pid = `pg-${Date.now()}-${i}`
         p.id = pid
-        // CSS scoping：所有以 .page 开头的选择器加 #pid 前缀
         const scopedCss = rawStyles.replace(/\.page([\s,{:.#\[>~+]|$)/g, `#${pid}.page$1`)
-        return {
-          id: crypto.randomUUID(),
-          title: `第 ${i + 1} 页`,
-          html: `<style>${scopedCss}</style>\n${p.outerHTML}`,
-        }
+        return { id: crypto.randomUUID(), title: `第 ${i + 1} 页`, html: `<style>${scopedCss}</style>\n${p.outerHTML}` }
       }))
       setTheme('none')
     }
