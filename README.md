@@ -55,8 +55,89 @@ npm run dev
 - 点击**播放**按钮触发演示动画（`.page.visible`）
 - 每页右下角自动注入导航按钮，无需手写
 
+### 导入 HTML 文件
+
+点击**打开**按钮可导入已有 `.html` 文件，工具会自动解析出各页内容。
+
+#### 文件格式要求
+
+导入时按以下优先级处理：
+
+**路径1：`<!-- PAGE -->` 分隔符（标准格式，推荐）**
+
+工具导出的文件和 AI 生成的文件均使用此格式：
+
+```html
+<!DOCTYPE html>
+<html><head>
+<style>
+  /* ⚠️ 全局样式写在 <head> 里，导入时会提取为 globalCss，
+     注入到每一页的 iframe 中。适合放字体、颜色变量、.page 基础布局等。
+     注意：这里的样式不属于任何一页，split 后头部会被丢弃，
+     必须通过 globalCss 机制才能保留。 */
+  body { font-family: 'Segoe UI', sans-serif; background: #000; }
+  .page { position: fixed; inset: 0; display: flex; ... }
+</style>
+</head><body>
+
+<!-- PAGE -->
+<style>.p1-title { font-size: 3em; }</style>
+<div class="page">第一页内容</div>
+
+<!-- PAGE -->
+<style>.p2-card { ... }</style>
+<div class="page">第二页内容</div>
+
+<!-- SLIDE-NAV-BEGIN -->
+<!-- ⚠️ 导航按钮块，导入时自动剔除，避免重复注入 -->
+<div class="pnav">...</div>
+<script>/* 翻页脚本 */</script>
+<!-- SLIDE-NAV-END -->
+
+</body></html>
+```
+
+导入逻辑：
+1. 提取 `<head>` 内所有 `<style>` 合并为 `globalCss`（每页渲染时重新注入）
+2. 按 `<!-- PAGE -->` 拆分，strip 掉每段的 `<body>` 标签前后内容
+3. 剔除导航块：`<!-- SLIDE-NAV-BEGIN/END -->`、`.pnav`、`.pc`、含 `querySelectorAll('.page')` 的 `<script>`
+4. 过滤出含 `class="page"` 的段落（兼容多 class，如 `class="page p2-page"`）
+
+**路径2：DOMParser fallback（无 `<!-- PAGE -->` 的旧格式文件）**
+
+自动用 `querySelectorAll('.page')` 找到所有页面元素，提取文档内所有 `<style>` 并 scope 到各页唯一 id，避免多页样式冲突。
+
 ### 导出
-导出为单个自包含 `.html` 文件，包含所有页面、样式和脚本，浏览器直接打开即可演示，无需服务器。
+
+导出为单个自包含 `.html` 文件，浏览器直接打开即可演示，无需服务器。
+
+**拼接结构（`buildPresentHtml`）：**
+
+```
+<!DOCTYPE html>
+<html><head>
+  <style>
+    /* themeCSS：当前主题的 CSS 变量和全局类 */
+    /* globalCss：用户自定义全局样式 / 导入时从 <head> 提取的样式 */
+  </style>
+</head><body>
+
+[页1的 html 片段]
+<!-- PAGE -->
+[页2的 html 片段]
+<!-- PAGE -->
+[页N的 html 片段]
+
+<!-- SLIDE-NAV-BEGIN -->
+<div class="pnav">上一页 | 播放 | 下一页</div>
+<div class="pc" id="pc"></div>  <!-- 页码 -->
+<script>/* 翻页脚本：translateY 滑动、键盘控制、.entered 入场动画 */</script>
+<!-- SLIDE-NAV-END -->
+
+</body></html>
+```
+
+导入时 `<!-- SLIDE-NAV-BEGIN/END -->` 块会被自动剔除，`<head>` 内样式提取为 `globalCss`，各页 `<!-- PAGE -->` 分隔符用于重新拆分页面。
 
 ---
 
