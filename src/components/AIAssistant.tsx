@@ -26,6 +26,7 @@ const SYSTEM_PROMPT = `你是一个 HTML 演示文档助手。用户会给你当
 4. 如果用户只是问问题而不是要修改代码，正常回答即可，不需要输出代码`
 
 async function callAI(endpoint: string, apiKey: string, model: string, messages: Message[], system: string): Promise<string> {
+  if (!endpoint.endsWith('/chat/completions') && !endpoint.includes('anthropic.com')) endpoint = endpoint.replace(/\/$/, '') + '/chat/completions'
   const isAnthropic = endpoint.includes('anthropic.com')
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   let body: object
@@ -37,7 +38,9 @@ async function callAI(endpoint: string, apiKey: string, model: string, messages:
     headers['Authorization'] = `Bearer ${apiKey}`
     body = { model, messages: [{ role: 'system', content: system }, ...messages] }
   }
-  const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
+  const full = endpoint.endsWith('/chat/completions') ? endpoint : endpoint.replace(/\/$/, '') + '/chat/completions'
+  headers['x-target'] = full
+  const res = await fetch('/api-proxy', { method: 'POST', headers, body: JSON.stringify(body) })
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`)
   const data = await res.json()
   return isAnthropic ? data.content[0].text : data.choices[0].message.content
@@ -68,7 +71,7 @@ const AIAssistant = forwardRef<AIAssistantHandle, Props>(function AIAssistant({ 
 
   const handleSend = async () => {
     if (!input.trim() || loading) return
-    if (!apiKey) { alert('请先在 AI 生成面板中配置 API Key'); return }
+    if (!apiKey) { alert('请先在顶栏 API 设置中配置 API Key'); return }
 
     const selection = editorRef.current?.getSelection() || ''
     const fullCode = getCurrentCode()

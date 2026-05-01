@@ -1,10 +1,13 @@
-import { useMemo, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useRef, useImperativeHandle, forwardRef, useEffect } from 'react'
 import { buildSlideHtml } from '../utils/buildSlideHtml'
 
 interface Props {
   slideHtml: string
   globalCss: string
   themeCSS: string
+  slideIndex: number
+  slideCount: number
+  enterAnim?: boolean
 }
 
 export interface PreviewFrameHandle {
@@ -12,7 +15,7 @@ export interface PreviewFrameHandle {
   getIframe: () => HTMLIFrameElement | null
 }
 
-const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(({ slideHtml, globalCss, themeCSS }, ref) => {
+const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(({ slideHtml, globalCss, themeCSS, slideIndex, slideCount, enterAnim = false }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useImperativeHandle(ref, () => ({
@@ -20,14 +23,21 @@ const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(({ slideHtml, globalC
     getIframe: () => iframeRef.current ?? null,
   }))
 
-  const srcdoc = useMemo(
-    () => buildSlideHtml(slideHtml, globalCss, themeCSS),
-    [slideHtml, globalCss, themeCSS]
-  )
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const html = buildSlideHtml(slideHtml, globalCss, themeCSS, enterAnim)
+    const doc = iframe.contentDocument
+    if (!doc) return
+    doc.open()
+    doc.write(html)
+    doc.close()
+    iframe.contentWindow?.postMessage({ type: 'slide-state', cur: slideIndex, total: slideCount }, '*')
+  }, [slideHtml, globalCss, themeCSS, enterAnim, slideIndex, slideCount])
+
   return (
     <iframe
       ref={iframeRef}
-      srcDoc={srcdoc}
       sandbox="allow-scripts allow-same-origin"
       onContextMenu={e => e.preventDefault()}
       style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}

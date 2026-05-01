@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { getThemeCSS } from '../themes/themeCSS'
 
-export type ThemeId = 'dark-tech' | 'mechanical'
+export type ThemeId = 'dark-tech' | 'mechanical' | 'none'
 
 export interface Slide {
   id: string
@@ -28,6 +28,8 @@ interface AppState {
   setPreviewHtml: (html: string | null) => void
   setShowAIPanel: (show: boolean) => void
   setSlides: (slides: Slide[]) => void
+  moveSlide: (from: number, to: number) => void
+  insertSlide: (slide: Slide, at: number) => void
 }
 
 const DEFAULT_HTML = `<style>
@@ -88,6 +90,19 @@ export const useAppStore = create<AppState>((set) => ({
 
   setSlides: (slides) => set(s => {
     return { slides, currentSlideIndex: 0 }
+  }),
+
+  moveSlide: (from, to) => set(s => {
+    const slides = [...s.slides]
+    const [item] = slides.splice(from, 1)
+    slides.splice(to, 0, item)
+    return { slides, currentSlideIndex: to }
+  }),
+
+  insertSlide: (slide, at) => set(s => {
+    const slides = [...s.slides]
+    slides.splice(at, 0, slide)
+    return { slides, currentSlideIndex: at }
   }),
 }))
 

@@ -36,3 +36,6 @@ html, body, #root {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--atag-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--atag-text-muted); }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }

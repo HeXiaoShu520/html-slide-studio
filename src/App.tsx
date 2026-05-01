@@ -9,23 +9,35 @@ import AIPanel from './components/AIPanel'
 import AIAssistant, { type AIAssistantHandle } from './components/AIAssistant'
 import { useAppStore } from './store/useAppStore'
 import { getThemeCSS } from './themes/themeCSS'
-import { buildSlideHtml, buildPresentHtml } from './utils/buildSlideHtml'
+import { buildPresentHtml } from './utils/buildSlideHtml'
 
 export default function App() {
-  const { slides, currentSlideIndex, currentTheme, globalCss, updateCurrentSlide, setPreviewHtml, previewHtml, showAIPanel } = useAppStore()
+  const { slides, currentSlideIndex, currentTheme, globalCss, updateCurrentSlide, setPreviewHtml, previewHtml, showAIPanel, setTheme } = useAppStore()
   const editorRef = useRef<CodeEditorHandle>(null)
   const aiRef = useRef<AIAssistantHandle>(null)
   const previewRef = useRef<PreviewFrameHandle>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; sel: string; elText: string } | null>(null)
   const ctxMenuRef = useRef<HTMLDivElement>(null)
+  const [previewSlideHtml, setPreviewSlideHtml] = useState(() => slides[currentSlideIndex]?.html ?? '')
+  const [refreshInterval, setRefreshInterval] = useState(1)
+  const refreshIntervalRef = useRef(1)
+  const [enterAnim, setEnterAnim] = useState(false)
 
   const currentSlide = slides[currentSlideIndex]
   const themeCSS = getThemeCSS(currentTheme)
 
+  // 切换页面或重新导入时立即同步预览
+  useEffect(() => { setPreviewSlideHtml(currentSlide?.html ?? '') }, [currentSlideIndex, slides])
+
   const handleCodeChange = useCallback((html: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => updateCurrentSlide(html), 300)
+    const delay = refreshIntervalRef.current * 1000
+    if (delay <= 0) { updateCurrentSlide(html); return }
+    debounceRef.current = setTimeout(() => {
+      updateCurrentSlide(html)
+      setPreviewSlideHtml(html)
+    }, delay)
   }, [updateCurrentSlide])
 
   const handleCursorLine = useCallback((line: number) => {
@@ -44,6 +56,12 @@ export default function App() {
         const { slides, currentSlideIndex, setCurrentSlideIndex } = useAppStore.getState()
         const next = Math.max(0, Math.min(slides.length - 1, currentSlideIndex + e.data.d))
         setCurrentSlideIndex(next)
+        // 通知 iframe 更新按钮状态
+        setTimeout(() => {
+          const iframe = previewRef.current?.getIframe()
+          const { slides: s, currentSlideIndex: cur } = useAppStore.getState()
+          iframe?.contentWindow?.postMessage({ type: 'slide-state', cur, total: s.length }, '*')
+        }, 0)
         return
       }
       if (e.data?.type === 'iframe-contextmenu') {
@@ -104,18 +122,44 @@ export default function App() {
         {/* 右侧：预览区 */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--atag-border)', background: 'var(--atag-bg-panel)', flexShrink: 0 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', userSelect: 'none' }}>
+              刷新间隔
+              <input type="number" value={refreshInterval}
+                onChange={e => { const v = Number(e.target.value); setRefreshInterval(v); refreshIntervalRef.current = v }}
+                style={{ width: 56, background: 'var(--atag-bg-card)', border: '1px solid var(--atag-border)', borderRadius: 4, padding: '2px 6px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', appearance: 'textfield' }} />
+              s
+            </label>
+            <button onClick={() => {
+                if (debounceRef.current) clearTimeout(debounceRef.current)
+                const html = editorRef.current?.getValue() ?? useAppStore.getState().slides[useAppStore.getState().currentSlideIndex]?.html ?? ''
+                updateCurrentSlide(html)
+                setPreviewSlideHtml(html)
+              }}
+              style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}>刷新</button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+              <input type="checkbox" checked={enterAnim} onChange={e => setEnterAnim(e.target.checked)} style={{ cursor: 'pointer' }} />
+              入场动画
+            </label>
+            <div style={{ width: 1, height: 16, background: 'var(--atag-border)', margin: '0 2px' }} />
             <button
-              onClick={() => currentSlide && setPreviewHtml(buildSlideHtml(currentSlide.html, globalCss, themeCSS))}
+              onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName, currentSlideIndex))}
               style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
-            ><Eye size={13} />预览本页</button>
+            ><Eye size={13} />从本页播放</button>
             <button
-              onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName))}
+              onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName, 0))}
               style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
-            ><Play size={13} />预览全文</button>
+            ><Play size={13} />从头播放</button>
+            <div style={{ width: 1, height: 16, background: 'var(--atag-border)', margin: '0 2px' }} />
+            {(['none', 'dark-tech', 'mechanical'] as const).map(id => (
+              <button key={id} onClick={() => setTheme(id)}
+                style={{ padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: '1px solid ' + (currentTheme === id ? 'var(--atag-primary)' : 'var(--atag-border)'), background: currentTheme === id ? 'var(--atag-primary)' : 'transparent', color: currentTheme === id ? '#fff' : 'var(--atag-text-muted)' }}>
+                {{ none: '原始', 'dark-tech': '暗黑', mechanical: '机械' }[id]}
+              </button>
+            ))}
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {currentSlide && (
-              <PreviewFrame ref={previewRef} slideHtml={currentSlide.html} globalCss={globalCss} themeCSS={themeCSS} />
+              <PreviewFrame ref={previewRef} slideHtml={previewSlideHtml} globalCss={globalCss} themeCSS={themeCSS} slideIndex={currentSlideIndex} slideCount={slides.length} enterAnim={enterAnim} />
             )}
           </div>
         </div>

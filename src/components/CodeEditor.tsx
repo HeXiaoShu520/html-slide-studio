@@ -6,6 +6,7 @@ export interface CodeEditorHandle {
   insertSnippet: (code: string) => void
   getSelection: () => string
   replaceAll: (code: string) => void
+  getValue: () => string
 }
 
 interface Props {
@@ -43,6 +44,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, Props>(({ value, onChange, onQuo
       editor.setValue(code)
       editor.focus()
     },
+    getValue: () => editorRef.current?.getValue() ?? '',
   }))
 
   const handleMount = useCallback((editor: Monaco.editor.IStandaloneCodeEditor) => {
