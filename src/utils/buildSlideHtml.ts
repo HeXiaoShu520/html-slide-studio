@@ -1,8 +1,11 @@
 import type { Slide } from '../store/useAppStore'
 
+// 演示模式的翻页脚本，注入到 buildPresentHtml 生成的独立 HTML 中
+// 负责：所有页 fixed 定位叠放、translateY 滑动翻页、.entered 入场动画触发、键盘控制
 const PRESENT_SCRIPT = `
 const pages=[...document.querySelectorAll('.page')];
 let cur=0,busy=false;
+// 初始化：所有页 fixed 定位，第0页显示，其余页移到屏幕下方
 pages.forEach((p,i)=>{
   p.style.position='fixed';
   p.style.inset='0';
@@ -11,30 +14,37 @@ pages.forEach((p,i)=>{
   p.style.opacity=i===0?'1':'0';
   p.style.overflow='auto';
 });
+// 更新上一页/下一页按钮的禁用状态
 function updateNav(){
   const btns=document.querySelectorAll('.pnav button');
   if(btns[0])btns[0].disabled=cur===0;
   if(btns[2])btns[2].disabled=cur===pages.length-1;
 }
+// 翻页：d=1 下一页，d=-1 上一页；axis 保留扩展，当前只用 y 轴
 function go(d,axis){
   axis=axis||'y';
   if(busy||cur+d<0||cur+d>=pages.length)return;
   busy=true;
   const from=pages[cur],to=pages[cur+d];
   const sign=d>0?1:-1;
+  // 先将目标页移到入场方向，再同步触发过渡到 translate(0,0)
   to.style.transform='translate('+(axis==='x'?(sign*100):0)+'%,'+(axis==='y'?(sign*100):0)+'%)';
   to.style.opacity='1';
-  void to.offsetWidth;
+  void to.offsetWidth; // 强制回流，确保过渡生效
   to.style.transform='translate(0,0)';
   from.style.transform='translate('+(axis==='x'?(-sign*100):0)+'%,'+(axis==='y'?(-sign*100):0)+'%)';
   from.style.opacity='0';
   cur+=d;
+  // 更新页码显示
   const c=document.getElementById('pc');
   if(c)c.textContent=(cur+1)+' / '+pages.length;
   updateNav();
+  // 过渡结束后触发新页的 .entered 入场动画
   setTimeout(()=>{busy=false;from.classList.remove('entered');to.classList.remove('entered');void to.offsetWidth;to.classList.add('entered');},480);
 }
+// 重播当前页的 .visible 演示动画（用户点击"播放"或按空格触发）
 function replayPage(){const p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible');}
+// 键盘控制：↓/空格 下一页，↑ 上一页，空格 重播
 document.addEventListener('keydown',e=>{
   if(['ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
   if(e.key==='ArrowDown')go(1,'y');
@@ -43,12 +53,10 @@ document.addEventListener('keydown',e=>{
 });
 `
 
+// 单页预览用：将 slide html 片段包装成完整 HTML 文档，注入主题/全局样式
+// enterAnim=false 时强制禁用所有入场动画（编辑时默认关闭，避免每次刷新都播放动画）
 export function buildSlideHtml(slideHtml: string, globalCss: string, themeCSS: string, enterAnim = false): string {
-  // 完整 HTML 文档直接原样渲染，不套壳
-  if (/^\s*<!DOCTYPE\s/i.test(slideHtml) || /^\s*<html[\s>]/i.test(slideHtml)) {
-    return slideHtml
-  }
-  // 给每个顶层标签注入 data-line 行号，供高亮同步使用
+  // 给每个顶层标签注入 data-line 行号，供代码编辑器光标位置与预览元素高亮同步
   let lineNum = 1
   const annotated = slideHtml
     .replace(/^([ \t]*<[a-zA-Z][^>]*?)>/gm, (_match, p1) => {
@@ -71,13 +79,17 @@ ${enterAnim ? '' : '.animate-in,.animate-fade,.animate-left,.animate-right{anima
 </head><body style="margin:0">${annotated}
 <div class="pnav"><button onclick="go(-1)">上一页</button><button onclick="replayPage()">播放</button><button onclick="go(1)">下一页</button></div>
 <script>
+// 页面加载后立即触发入场动画
 var pg=document.querySelector('.page');if(pg)pg.classList.add('entered');
+// 翻页通过 postMessage 通知父窗口（App.tsx），由父窗口切换 currentSlideIndex
 function go(d){parent.postMessage({type:'slide-nav',d},'*')}
+// 重播当前页演示动画：移除再添加 .visible 触发 CSS 动画重放
 function replayPage(){const pg=document.querySelector('.page');if(!pg)return;pg.classList.remove('visible');void pg.offsetWidth;pg.classList.add('visible');}
 document.addEventListener('keydown',e=>{
   if(e.key===' '){e.preventDefault();replayPage();}
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();go(e.key==='ArrowDown'?1:-1);}
 });
+// 右键菜单：将选中文字或元素文字通过 postMessage 传给父窗口，触发自定义右键菜单
 document.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const sel=window.getSelection()?.toString().trim();
@@ -85,6 +97,7 @@ document.addEventListener('contextmenu',e=>{
   const text=sel||elText;
   if(text)parent.postMessage({type:'iframe-contextmenu',sel:sel||'',elText,x:e.clientX,y:e.clientY},'*');
 });
+// 接收父窗口消息：slide-state 更新导航按钮状态；highlight-line 高亮对应行元素
 window.addEventListener('message',e=>{
   if(e.data?.type==='slide-state'){
     const btns=document.querySelectorAll('.pnav button');
@@ -97,6 +110,7 @@ window.addEventListener('message',e=>{
   document.querySelectorAll('[data-hl]').forEach(el=>el.removeAttribute('data-hl'));
   const all=document.querySelectorAll('[data-line]');
   let best=null;
+  // 找到 data-line <= 当前光标行的最后一个元素
   all.forEach(el=>{
     const l=+el.getAttribute('data-line');
     if(l<=line)best=el;
@@ -107,7 +121,10 @@ window.addEventListener('message',e=>{
 </body></html>`
 }
 
+// 演示/导出用：将所有 slides 合并为单个完整 HTML，包含翻页脚本，可直接浏览器打开
+// startIndex 指定从第几页开始播放（"从本页播放"功能用）
 export function buildPresentHtml(slides: Slide[], globalCss: string, themeCSS: string, projectName: string, startIndex = 0): string {
+  // 各页 html 用 <!-- PAGE --> 拼接，导入时可按此分隔符重新拆分
   const allHtml = slides.map(s => s.html).join('\n<!-- PAGE -->\n')
   return `<!DOCTYPE html><html lang="zh-CN"><head>
 <meta charset="UTF-8">

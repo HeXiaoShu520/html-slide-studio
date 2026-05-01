@@ -26,6 +26,7 @@ const PreviewFrame = forwardRef<PreviewFrameHandle, Props>(({ slideHtml, globalC
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
+    console.log('[PreviewFrame] render slide:', slideIndex, '/', slideCount, 'htmlLen:', slideHtml.length)
     const html = buildSlideHtml(slideHtml, globalCss, themeCSS, enterAnim)
     const doc = iframe.contentDocument
     if (!doc) return
