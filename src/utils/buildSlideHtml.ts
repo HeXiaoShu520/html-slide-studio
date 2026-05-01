@@ -7,7 +7,7 @@ pages.forEach((p,i)=>{
   p.style.position='fixed';
   p.style.inset='0';
   p.style.transition='transform .45s cubic-bezier(.4,0,.2,1),opacity .45s';
-  p.style.transform=i===0?'translate(0,0)':'translate(100%,0)';
+  p.style.transform=i===0?'translate(0,0)':'translate(0,100%)';
   p.style.opacity=i===0?'1':'0';
   p.style.overflow='auto';
 });
@@ -108,7 +108,7 @@ window.addEventListener('message',e=>{
 }
 
 export function buildPresentHtml(slides: Slide[], globalCss: string, themeCSS: string, projectName: string, startIndex = 0): string {
-  const allHtml = slides.map(s => s.html).join('\n')
+  const allHtml = slides.map(s => s.html).join('\n<!-- PAGE -->\n')
   return `<!DOCTYPE html><html lang="zh-CN"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -124,8 +124,10 @@ ${themeCSS}${globalCss}
 </style>
 </head><body>
 ${allHtml}
-<div class="pnav"><button onclick="go(-1)">上一页</button><button onclick="replayPage()">播放</button><button onclick="go(1)">下一页</button></div>
-<div class="pc" id="pc">${startIndex + 1} / ${slides.length}</div>
-<script>${PRESENT_SCRIPT}cur=${startIndex};pages.forEach((p,i)=>{p.style.transform=i===${startIndex}?'translate(0,0)':'translate(100%,0)';p.style.opacity=i===${startIndex}?'1':'0';});updateNav();setTimeout(()=>{pages[cur].classList.add('entered');},50);<\/script>
+<!-- SLIDE-NAV-BEGIN -->
+<div class="pnav"><button id="btn-prev">上一页</button><button id="btn-replay">播放</button><button id="btn-next">下一页</button></div>
+<div class="pc" id="pc"></div>
+<script>${PRESENT_SCRIPT}cur=${startIndex};pages.forEach((p,i)=>{p.style.transform=i===${startIndex}?'translate(0,0)':'translate(0,100%)';p.style.opacity=i===${startIndex}?'1':'0';});document.getElementById('btn-prev').onclick=function(){go(-1);};document.getElementById('btn-next').onclick=function(){go(1);};document.getElementById('btn-replay').onclick=function(){replayPage();};updateNav();setTimeout(()=>{pages[cur].classList.add('entered');},50);<\/script>
+<!-- SLIDE-NAV-END -->
 </body></html>`
 }

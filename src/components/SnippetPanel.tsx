@@ -17,7 +17,7 @@ const SNIPPETS: Snippet[] = [
   { label: '单卡片', icon: '▭', group: '卡片', fields: [{ key: 'title', label: '卡片标题', default: '卡片标题' }, { key: 'body', label: '卡片内容', default: '卡片内容描述文本。', type: 'textarea' }], build: v => `<div class="card" style="max-width:500px">\n  <h3 style="margin-bottom:8px">${v.title}</h3>\n  <p>${v.body}</p>\n</div>` },
   {
     label: '卡片网格', icon: '⊞', group: '卡片',
-    fields: [{ key: 'n', label: '卡片数量', default: '3', type: 'number' }, { key: 'items', label: '卡片内容（每行：标题|描述）', default: '模块一|描述文本\n模块二|描述文本\n模块三|描述文本', type: 'textarea' }],
+    fields: [{ key: 'items', label: '卡片内容（每行：标题|描述）', default: '模块一|描述文本\n模块二|描述文本\n模块三|描述文本', type: 'textarea' }],
     build: v => {
       const lines = v.items.split('\n').filter(Boolean)
       const cards = lines.map(l => { const [t, d] = l.split('|'); return `  <div class="card"><h3>${t?.trim()||''}</h3><p>${d?.trim()||''}</p></div>` })
@@ -83,6 +83,7 @@ const SNIPPETS: Snippet[] = [
   { label: '视频', icon: '▶', group: '媒体', fields: [{ key: 'src', label: '视频（URL 或本地文件）', default: '', type: 'video' }], build: v => `<video controls style="max-width:100%;border-radius:12px;margin:20px 0">\n  <source src="${v.src || ''}" type="video/mp4">\n</video>` },
   { label: '进度条', icon: '▬', group: '数据', fields: [{ key: 'name', label: '进度名称', default: '进度名称' }, { key: 'pct', label: '百分比', default: '75', type: 'number', min: 0, max: 100 }], build: v => `<div style="width:100%;max-width:500px">\n  <div style="display:flex;justify-content:space-between;font-size:.85em;margin-bottom:6px"><span>${v.name}</span><span>${v.pct}%</span></div>\n  <div style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px"><div style="height:100%;width:${v.pct}%;background:var(--gradient);border-radius:4px"></div></div>\n</div>` },
 
+  { label: '换行', icon: '↵', group: '其他', build: () => `<div class="linebreak"></div>` },
   { label: '分隔线', icon: '—', group: '其他', build: () => `<hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0">` },
   { label: '间距', icon: '↕', group: '其他', fields: [{ key: 'h', label: '高度（px）', default: '40', type: 'number', min: 8, max: 200 }], build: v => `<div style="height:${v.h}px"></div>` },
   { label: '封面页', icon: '◈', group: '其他', fields: [{ key: 'title', label: '主标题', default: '演示标题' }, { key: 'sub', label: '副标题', default: '副标题说明文字' }, { key: 'btn', label: '按钮文字（留空不显示）', default: '开始演示' }], build: v => `<div class="page" style="text-align:center">\n  <h1 style="font-size:3.5em;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px">${v.title}</h1>\n  <p style="font-size:1.3em;opacity:.7;margin-bottom:32px">${v.sub}</p>\n${v.btn ? `  <button style="padding:12px 32px;border-radius:30px;border:none;background:var(--gradient);color:#fff;font-size:1em;cursor:pointer">${v.btn}</button>` : ''}\n</div>` },

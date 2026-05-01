@@ -13,6 +13,7 @@ const THEMES: Record<ThemeId, { primary: string; primaryLight: string; bgMain: s
 
 // 不依赖主题变量的基础组件类，任何主题下都可用
 export const BASE_COMPONENT_CSS = `
+.linebreak{display:block;width:100%;height:1.2em}
 .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:100%;max-width:1000px}
 .card{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:30px;margin:10px;transition:transform .3s,box-shadow .3s}
 .card:hover{transform:translateY(-5px);box-shadow:0 10px 40px rgba(0,102,255,0.2)}
