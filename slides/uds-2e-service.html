@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>UDS 2E 服务 — WriteDataByIdentifier</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+/* 全局重置与基础 */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#000;color:#fff;overflow:hidden}
+
+/* 全屏页面容器；background:#000 作为兜底，各页可用自己的渐变背景覆盖 */
+.page{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;padding:40px;background:#000}
+
+/* 通用卡片 */
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:24px}
+
+/* 通用徽章 */
+.badge{display:inline-block;font-size:12px;padding:4px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05)}
+</style>
+</head>
+<body>
+
+<!-- ========== 第1页：封面 ========== -->
+<style>
+/* 封面页：科技感深蓝背景 */
+:root{--c1:#00e5ff;--c2:#0066ff}
+
+/* 背景网格 */
+.p1-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,255,0.04)1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.04)1px,transparent 1px);background-size:60px 60px;pointer-events:none}
+
+/* 光晕 */
+.p1-halo{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+.p1-h1{width:500px;height:500px;background:radial-gradient(circle,rgba(0,229,255,0.1)0%,transparent 70%);top:-120px;left:-120px}
+.p1-h2{width:400px;height:400px;background:radial-gradient(circle,rgba(0,102,255,0.12)0%,transparent 70%);bottom:-80px;right:-80px}
+
+/* 内容区 */
+.p1-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center}
+
+/* 顶部标签 */
+.p1-tag{font-size:12px;letter-spacing:3px;color:var(--c1);border:1px solid rgba(0,229,255,0.35);padding:4px 18px;border-radius:20px;background:rgba(0,229,255,0.05);text-transform:uppercase;margin-bottom:28px}
+
+/* 主标题 */
+.p1-title{font-size:54px;font-weight:800;line-height:1.15;margin-bottom:14px}
+.p1-title .hl{color:var(--c1);text-shadow:0 0 30px rgba(0,229,255,0.5)}
+
+/* 副标题 */
+.p1-sub{font-size:20px;color:#90caf9;letter-spacing:2px;margin-bottom:44px}
+
+/* 分隔线 */
+.p1-div{width:120px;height:2px;background:linear-gradient(90deg,transparent,var(--c1),transparent);margin-bottom:36px}
+
+/* 底部标签组 */
+.p1-tags{display:flex;gap:14px}
+.p1-tags span{font-size:13px;color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.1);padding:5px 16px;border-radius:20px;background:rgba(255,255,255,0.03)}
+
+/* 入场动画初始状态 */
+.p1-tag,.p1-title,.p1-sub,.p1-div,.p1-tags{opacity:0;transform:translateY(28px);transition:opacity .55s ease,transform .55s ease}
+
+/* 翻页入场触发 */
+.page.entered .p1-tag  {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p1-title{opacity:1;transform:translateY(0);transition-delay:.25s}
+.page.entered .p1-sub  {opacity:1;transform:translateY(0);transition-delay:.4s}
+.page.entered .p1-div  {opacity:1;transform:translateY(0);transition-delay:.5s}
+.page.entered .p1-tags {opacity:1;transform:translateY(0);transition-delay:.62s}
+</style>
+<div class="page" style="background:radial-gradient(ellipse at 60% 40%,#0d2a4a 0%,#050d1a 60%,#000 100%);position:relative">
+  <div class="p1-grid"></div>
+  <div class="p1-halo p1-h1"></div>
+  <div class="p1-halo p1-h2"></div>
+  <div class="p1-inner">
+    <div class="p1-tag">UDS Protocol Tutorial</div>
+    <div class="p1-title">UDS <span class="hl">2E</span> 服务<br>WriteDataByIdentifier</div>
+    <div class="p1-sub">统一诊断服务协议教程</div>
+    <div class="p1-div"></div>
+    <div class="p1-tags">
+      <span>ISO 14229-1</span>
+      <span>数据传输类</span>
+      <span>Service ID: 0x2E</span>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE -->
+
+<!-- ========== 第2页：协议简介 ========== -->
+<style>
+/* 协议简介页：三卡片布局 */
+.p2-page{background:radial-gradient(ellipse at 30% 60%,#0a1f3a 0%,#060e1c 70%,#000 100%)}
+
+/* 页标题 */
+.p2-h{font-size:30px;font-weight:700;margin-bottom:6px;text-align:center}
+.p2-h span{color:#00e5ff}
+.p2-line{width:56px;height:3px;background:#00e5ff;border-radius:2px;margin:0 auto 32px}
+
+/* 三列卡片网格 */
+.p2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;width:100%;max-width:960px}
+
+/* 单卡片 */
+.p2-card{background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:16px;padding:28px 22px;position:relative;overflow:hidden}
+.p2-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00e5ff,transparent)}
+
+/* 卡片图标 */
+.p2-icon{font-size:28px;margin-bottom:14px}
+
+/* 卡片标题 */
+.p2-ct{font-size:15px;font-weight:700;color:#00e5ff;margin-bottom:10px}
+
+/* 卡片内容 */
+.p2-cb{font-size:13px;color:rgba(255,255,255,0.65);line-height:1.75}
+.p2-cb strong{color:#00e5ff}
+
+/* 底部标签行 */
+.p2-foot{margin-top:26px;display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,0.4)}
+.p2-fb{background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);color:#00e5ff;padding:4px 14px;border-radius:12px;font-size:12px}
+
+/* 入场动画 */
+.p2-h,.p2-line,.p2-card,.p2-foot{opacity:0;transform:translateY(22px);transition:opacity .5s ease,transform .5s ease}
+.page.entered .p2-h   {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p2-line{opacity:1;transform:translateY(0);transition-delay:.2s}
+.page.entered .p2-card:nth-child(1){opacity:1;transform:translateY(0);transition-delay:.3s}
+.page.entered .p2-card:nth-child(2){opacity:1;transform:translateY(0);transition-delay:.42s}
+.page.entered .p2-card:nth-child(3){opacity:1;transform:translateY(0);transition-delay:.54s}
+.page.entered .p2-foot{opacity:1;transform:translateY(0);transition-delay:.66s}
+</style>
+<div class="page p2-page">
+  <div class="p2-h">协议简介 — <span>2E 服务</span></div>
+  <div class="p2-line"></div>
+  <div class="p2-grid">
+    <div class="p2-card">
+      <div class="p2-icon">✍️</div>
+      <div class="p2-ct">服务作用</div>
+      <div class="p2-cb">允许诊断仪（Tester）向 ECU 写入指定数据标识符（DID）对应的数据，实现参数配置、标定数据写入、VIN 码烧录等操作。</div>
+    </div>
+    <div class="p2-card">
+      <div class="p2-icon">🎯</div>
+      <div class="p2-ct">适用场景</div>
+      <div class="p2-cb">• 生产线 VIN 码写入<br>• ECU 标定参数更新<br>• 功能配置开关设置<br>• 车辆个性化参数写入</div>
+    </div>
+    <div class="p2-card">
+      <div class="p2-icon">📦</div>
+      <div class="p2-ct">所属服务组</div>
+      <div class="p2-cb">属于 <strong>数据传输类</strong> 服务，与 0x22（ReadDataByIdentifier）配对使用，共同构成 DID 读写体系。</div>
+    </div>
+  </div>
+  <div class="p2-foot">
+    <span>标准来源：</span>
+    <span class="p2-fb">ISO 14229-1</span>
+    <span class="p2-fb">服务组：数据传输</span>
+    <span class="p2-fb">Service ID: 0x2E</span>
+  </div>
+</div>
+
+<!-- PAGE -->
+
+<!-- ========== 第3页：请求报文格式 ========== -->
+<style>
+/* 请求报文页：字节示意图 + 表格 */
+.p3-page{background:radial-gradient(ellipse at 70% 30%,#0d1f3c 0%,#060c18 70%,#000 100%)}
+.p3-h{font-size:30px;font-weight:700;margin-bottom:6px;text-align:center}
+.p3-h span{color:#00e5ff}
+.p3-line{width:56px;height:3px;background:#00e5ff;border-radius:2px;margin:0 auto 28px}
+
+/* 字节示意图 */
+.p3-bytes{display:flex;align-items:stretch;margin-bottom:28px;border-radius:12px;overflow:hidden;border:1px solid rgba(0,229,255,0.2);max-width:860px;width:100%}
+.p3-b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 8px;border-right:1px solid rgba(0,229,255,0.15)}
+.p3-b:last-child{border-right:none;flex:2}
+.p3-b-sid{background:rgba(0,229,255,0.12)}
+.p3-b-did{background:rgba(100,180,255,0.08)}
+.p3-b-dat{background:rgba(100,255,180,0.06)}
+.p3-bl{font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:5px;letter-spacing:1px;text-transform:uppercase}
+.p3-bv{font-size:20px;font-weight:700;font-family:monospace}
+.p3-b-sid .p3-bv{color:#00e5ff}
+.p3-b-did .p3-bv{color:#64b4ff}
+.p3-b-dat .p3-bv{color:#64ffb4}
+.p3-bd{font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;text-align:center}
+
+/* 表格 */
+.p3-tbl{width:100%;max-width:860px;border-collapse:collapse;font-size:14px}
+.p3-tbl th{background:rgba(0,229,255,0.08);color:#00e5ff;padding:10px 16px;text-align:left;border-bottom:1px solid rgba(0,229,255,0.2);font-weight:600}
+.p3-tbl td{padding:10px 16px;color:rgba(255,255,255,0.72);border-bottom:1px solid rgba(255,255,255,0.06)}
+.p3-tbl tr:last-child td{border-bottom:none}
+.p3-tbl td:first-child{font-family:monospace;color:#fff;font-weight:600}
+
+/* 入场动画 */
+.p3-h,.p3-line,.p3-bytes,.p3-tbl{opacity:0;transform:translateY(22px);transition:opacity .5s ease,transform .5s ease}
+.page.entered .p3-h    {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p3-line {opacity:1;transform:translateY(0);transition-delay:.2s}
+.page.entered .p3-bytes{opacity:1;transform:translateY(0);transition-delay:.3s}
+.page.entered .p3-tbl  {opacity:1;transform:translateY(0);transition-delay:.45s}
+</style>
+<div class="page p3-page">
+  <div class="p3-h">请求报文格式 — <span>Request Frame</span></div>
+  <div class="p3-line"></div>
+  <div class="p3-bytes">
+    <div class="p3-b p3-b-sid"><div class="p3-bl">Byte 1</div><div class="p3-bv">0x2E</div><div class="p3-bd">Service ID</div></div>
+    <div class="p3-b p3-b-did"><div class="p3-bl">Byte 2</div><div class="p3-bv">DID<sub style="font-size:11px">Hi</sub></div><div class="p3-bd">DataIdentifier</div></div>
+    <div class="p3-b p3-b-did"><div class="p3-bl">Byte 3</div><div class="p3-bv">DID<sub style="font-size:11px">Lo</sub></div><div class="p3-bd">DataIdentifier</div></div>
+    <div class="p3-b p3-b-dat"><div class="p3-bl">Byte 4 … N</div><div class="p3-bv">DataRecord</div><div class="p3-bd">写入数据（长度由 DID 定义）</div></div>
+  </div>
+  <table class="p3-tbl">
+    <thead><tr><th>字段</th><th>长度</th><th>取值范围</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>ServiceID</td><td>1 字节</td><td>0x2E</td><td>WriteDataByIdentifier 服务标识符</td></tr>
+      <tr><td>DataIdentifier</td><td>2 字节</td><td>0x0000 – 0xFFFF</td><td>数据标识符，高字节在前（Big-Endian）</td></tr>
+      <tr><td>DataRecord</td><td>N 字节</td><td>应用层定义</td><td>待写入的数据内容，长度由 DID 规范决定</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE -->
+
+<!-- ========== 第4页：正响应 ========== -->
+<style>
+/* 正响应页：绿色主题 */
+.p4-page{background:radial-gradient(ellipse at 40% 50%,#062a18 0%,#040e0a 70%,#000 100%)}
+.p4-h{font-size:30px;font-weight:700;margin-bottom:6px;text-align:center}
+.p4-h span{color:#00e676}
+.p4-line{width:56px;height:3px;background:#00e676;border-radius:2px;margin:0 auto 28px}
+
+/* 字节示意图 */
+.p4-bytes{display:flex;align-items:stretch;margin-bottom:28px;border-radius:12px;overflow:hidden;border:1px solid rgba(0,230,118,0.2);max-width:680px;width:100%}
+.p4-b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 10px;border-right:1px solid rgba(0,230,118,0.15)}
+.p4-b:last-child{border-right:none}
+.p4-b-sid{background:rgba(0,230,118,0.12)}
+.p4-b-did{background:rgba(0,200,100,0.07)}
+.p4-bl{font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:5px;letter-spacing:1px;text-transform:uppercase}
+.p4-bv{font-size:20px;font-weight:700;font-family:monospace}
+.p4-b-sid .p4-bv{color:#00e676}
+.p4-b-did .p4-bv{color:#69f0ae}
+.p4-bd{font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px}
+
+/* 示例卡片 */
+.p4-ex{max-width:680px;width:100%;background:rgba(0,230,118,0.05);border:1px solid rgba(0,230,118,0.18);border-radius:14px;padding:20px 26px;margin-bottom:20px}
+.p4-ext{font-size:12px;color:#00e676;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+.p4-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:rgba(255,255,255,0.72)}
+.p4-row:last-child{margin-bottom:0}
+.p4-mono{font-family:monospace;background:rgba(0,230,118,0.1);color:#69f0ae;padding:2px 8px;border-radius:4px;font-size:12px}
+.p4-ok{color:#00e676;font-size:13px}
+
+/* 说明 */
+.p4-note{max-width:680px;width:100%;font-size:13px;color:rgba(255,255,255,0.38);text-align:center;line-height:1.65}
+
+/* 入场动画 */
+.p4-h,.p4-line,.p4-bytes,.p4-ex,.p4-note{opacity:0;transform:translateY(22px);transition:opacity .5s ease,transform .5s ease}
+.page.entered .p4-h    {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p4-line {opacity:1;transform:translateY(0);transition-delay:.2s}
+.page.entered .p4-bytes{opacity:1;transform:translateY(0);transition-delay:.3s}
+.page.entered .p4-ex   {opacity:1;transform:translateY(0);transition-delay:.44s}
+.page.entered .p4-note {opacity:1;transform:translateY(0);transition-delay:.58s}
+</style>
+<div class="page p4-page">
+  <div class="p4-h">正响应报文 — <span>Positive Response</span></div>
+  <div class="p4-line"></div>
+  <div class="p4-bytes">
+    <div class="p4-b p4-b-sid"><div class="p4-bl">Byte 1</div><div class="p4-bv">0x6E</div><div class="p4-bd">Response SID</div></div>
+    <div class="p4-b p4-b-did"><div class="p4-bl">Byte 2</div><div class="p4-bv">DID<sub style="font-size:11px">Hi</sub></div><div class="p4-bd">DataIdentifier</div></div>
+    <div class="p4-b p4-b-did"><div class="p4-bl">Byte 3</div><div class="p4-bv">DID<sub style="font-size:11px">Lo</sub></div><div class="p4-bd">DataIdentifier</div></div>
+  </div>
+  <div class="p4-ex">
+    <div class="p4-ext">示例：写入 VIN 码（DID = 0xF190）</div>
+    <div class="p4-row"><span>请求：</span><span class="p4-mono">2E F1 90 57 42 41 5A 5A 5A 39 5A 42 41 31 32 33 34 35 36</span></div>
+    <div class="p4-row"><span>响应：</span><span class="p4-mono">6E F1 90</span><span class="p4-ok">✓ 写入成功</span></div>
+  </div>
+  <div class="p4-note">正响应仅回显 ServiceID（0x2E + 0x40 = <strong style="color:#00e676">0x6E</strong>）和 DataIdentifier，<br>不包含写入的数据内容，表示 ECU 已成功接收并存储数据。</div>
+</div>
+
+<!-- PAGE -->
+
+<!-- ========== 第5页：负响应 ========== -->
+<style>
+/* 负响应页：红色主题 */
+.p5-page{background:radial-gradient(ellipse at 60% 40%,#2a0808 0%,#0e0404 70%,#000 100%)}
+.p5-h{font-size:30px;font-weight:700;margin-bottom:6px;text-align:center}
+.p5-h span{color:#ff5252}
+.p5-line{width:56px;height:3px;background:#ff5252;border-radius:2px;margin:0 auto 20px}
+
+/* 报文格式行 */
+.p5-frame{display:flex;align-items:stretch;margin-bottom:22px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,82,82,0.2);max-width:580px;width:100%}
+.p5-fb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;border-right:1px solid rgba(255,82,82,0.15)}
+.p5-fb:last-child{border-right:none}
+.p5-fb-neg{background:rgba(255,82,82,0.12)}
+.p5-fb-sid{background:rgba(255,82,82,0.07)}
+.p5-fb-nrc{background:rgba(255,150,50,0.08)}
+.p5-fbl{font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase}
+.p5-fbv{font-size:18px;font-weight:700;font-family:monospace}
+.p5-fb-neg .p5-fbv{color:#ff5252}
+.p5-fb-sid .p5-fbv{color:#ff8a80}
+.p5-fb-nrc .p5-fbv{color:#ffab40}
+.p5-fbd{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px}
+
+/* NRC 卡片网格 */
+.p5-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:900px;width:100%}
+.p5-card{background:rgba(255,82,82,0.05);border:1px solid rgba(255,82,82,0.15);border-radius:10px;padding:14px 10px;text-align:center}
+.p5-nrc{font-size:16px;font-weight:700;font-family:monospace;color:#ff5252;margin-bottom:6px}
+.p5-name{font-size:11px;color:#ffab40;margin-bottom:6px;font-weight:600}
+.p5-desc{font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5}
+
+/* 入场动画 */
+.p5-h,.p5-line,.p5-frame,.p5-card{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease}
+.page.entered .p5-h    {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p5-line {opacity:1;transform:translateY(0);transition-delay:.2s}
+.page.entered .p5-frame{opacity:1;transform:translateY(0);transition-delay:.3s}
+.page.entered .p5-card:nth-child(1){opacity:1;transform:translateY(0);transition-delay:.4s}
+.page.entered .p5-card:nth-child(2){opacity:1;transform:translateY(0);transition-delay:.48s}
+.page.entered .p5-card:nth-child(3){opacity:1;transform:translateY(0);transition-delay:.56s}
+.page.entered .p5-card:nth-child(4){opacity:1;transform:translateY(0);transition-delay:.64s}
+.page.entered .p5-card:nth-child(5){opacity:1;transform:translateY(0);transition-delay:.72s}
+</style>
+<div class="page p5-page">
+  <div class="p5-h">负响应报文 — <span>Negative Response</span></div>
+  <div class="p5-line"></div>
+  <div class="p5-frame">
+    <div class="p5-fb p5-fb-neg"><div class="p5-fbl">Byte 1</div><div class="p5-fbv">0x7F</div><div class="p5-fbd">NRC SID</div></div>
+    <div class="p5-fb p5-fb-sid"><div class="p5-fbl">Byte 2</div><div class="p5-fbv">0x2E</div><div class="p5-fbd">Request SID</div></div>
+    <div class="p5-fb p5-fb-nrc"><div class="p5-fbl">Byte 3</div><div class="p5-fbv">NRC</div><div class="p5-fbd">错误码</div></div>
+  </div>
+  <div class="p5-grid">
+    <div class="p5-card"><div class="p5-nrc">0x13</div><div class="p5-name">incorrectMessageLength</div><div class="p5-desc">报文长度或格式错误</div></div>
+    <div class="p5-card"><div class="p5-nrc">0x22</div><div class="p5-name">conditionsNotCorrect</div><div class="p5-desc">当前条件不满足写入要求</div></div>
+    <div class="p5-card"><div class="p5-nrc">0x31</div><div class="p5-name">requestOutOfRange</div><div class="p5-desc">DID 不支持或数据超范围</div></div>
+    <div class="p5-card"><div class="p5-nrc">0x33</div><div class="p5-name">securityAccessDenied</div><div class="p5-desc">安全访问未解锁</div></div>
+    <div class="p5-card"><div class="p5-nrc">0x35</div><div class="p5-name">invalidKey</div><div class="p5-desc">密钥无效，安全验证失败</div></div>
+  </div>
+</div>
+
+<!-- PAGE -->
+
+<!-- ========== 第6页：通信流程图（舞台动画） ========== -->
+<style>
+/* 通信流程图页：舞台式绝对定位 */
+.p6-page{background:radial-gradient(ellipse at 50% 50%,#0a1628 0%,#050a14 70%,#000 100%);position:relative}
+
+/* 舞台容器 */
+.p6-stage{position:absolute;inset:0}
+
+/* 左侧 Tester 节点 */
+.p6-tester{position:absolute;left:10%;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:12px}
+.p6-node{width:100px;height:100px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid}
+.p6-node-t{background:rgba(0,229,255,0.1);border-color:#00e5ff;color:#00e5ff}
+.p6-node-e{background:rgba(100,180,255,0.1);border-color:#64b4ff;color:#64b4ff}
+.p6-node-icon{font-size:28px;margin-bottom:4px}
+.p6-node-label{font-size:11px;letter-spacing:1px}
+.p6-node-name{font-size:13px;color:rgba(255,255,255,0.7);margin-top:8px;font-weight:600}
+
+/* 右侧 ECU 节点 */
+.p6-ecu{position:absolute;right:10%;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:12px}
+
+/* 中间总线 */
+.p6-bus{position:absolute;top:50%;left:calc(10% + 110px);right:calc(10% + 110px);height:2px;background:linear-gradient(90deg,rgba(0,229,255,0.4),rgba(100,180,255,0.4));transform:translateY(-50%)}
+.p6-bus::before,.p6-bus::after{content:'';position:absolute;top:50%;width:8px;height:8px;border-radius:50%;transform:translateY(-50%)}
+.p6-bus::before{left:0;background:#00e5ff;box-shadow:0 0 8px #00e5ff}
+.p6-bus::after{right:0;background:#64b4ff;box-shadow:0 0 8px #64b4ff}
+
+/* 数据包（请求方向：左→右） */
+.p6-pkt-req{position:absolute;top:calc(50% - 22px);left:calc(10% + 110px);width:80px;height:22px;background:linear-gradient(90deg,#00e5ff,#0066ff);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;opacity:0;white-space:nowrap;padding:0 8px}
+
+/* 数据包（响应方向：右→左） */
+.p6-pkt-res{position:absolute;top:calc(50% + 4px);right:calc(10% + 110px);width:80px;height:22px;background:linear-gradient(90deg,#00e676,#00b050);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;opacity:0;white-space:nowrap;padding:0 8px}
+
+/* 标注文字 */
+.p6-label-req{position:absolute;top:calc(50% - 50px);left:50%;transform:translateX(-50%);font-size:12px;color:#00e5ff;opacity:0;white-space:nowrap}
+.p6-label-res{position:absolute;top:calc(50% + 30px);left:50%;transform:translateX(-50%);font-size:12px;color:#00e676;opacity:0;white-space:nowrap}
+
+/* 页标题 */
+.p6-title{position:absolute;top:40px;left:50%;transform:translateX(-50%);font-size:26px;font-weight:700;color:#fff;white-space:nowrap}
+.p6-title span{color:#00e5ff}
+.p6-hint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);font-size:13px;color:rgba(255,255,255,0.35);white-space:nowrap}
+
+/* 步骤说明 */
+.p6-steps{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);display:flex;gap:24px}
+.p6-step{font-size:12px;color:rgba(255,255,255,0.4);display:flex;align-items:center;gap:6px}
+.p6-step-dot{width:8px;height:8px;border-radius:50%}
+
+/* @keyframes 请求包从左飞到右 */
+@keyframes p6-fly-req{
+  0%  {opacity:0;left:calc(10% + 110px)}
+  10% {opacity:1}
+  90% {opacity:1}
+  100%{opacity:0;left:calc(90% - 190px)}
+}
+
+/* @keyframes 响应包从右飞到左 */
+@keyframes p6-fly-res{
+  0%  {opacity:0;right:calc(10% + 110px)}
+  10% {opacity:1}
+  90% {opacity:1}
+  100%{opacity:0;right:calc(90% - 190px)}
+}
+
+/* @keyframes 标注淡入淡出 */
+@keyframes p6-fade-label{
+  0%,100%{opacity:0}
+  20%,80%{opacity:1}
+}
+
+/* 入场动画 */
+.p6-title,.p6-tester,.p6-ecu,.p6-bus,.p6-hint{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease}
+.page.entered .p6-title  {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p6-tester {opacity:1;transform:translateY(-50%);transition-delay:.25s}
+.page.entered .p6-ecu    {opacity:1;transform:translateY(-50%);transition-delay:.25s}
+.page.entered .p6-bus    {opacity:1;transform:translateY(-50%);transition-delay:.4s}
+.page.entered .p6-hint   {opacity:1;transform:translateY(0);transition-delay:.55s}
+
+/* 播放按钮触发动画 */
+.page.visible .p6-pkt-req  {animation:p6-fly-req 1.8s ease-in-out forwards}
+.page.visible .p6-pkt-res  {animation:p6-fly-res 1.8s ease-in-out 2.2s forwards}
+.page.visible .p6-label-req{animation:p6-fade-label 1.8s ease-in-out forwards}
+.page.visible .p6-label-res{animation:p6-fade-label 1.8s ease-in-out 2.2s forwards}
+</style>
+<div class="page p6-page">
+  <div class="p6-stage">
+    <div class="p6-title">通信流程图 — <span>Communication Flow</span></div>
+    <div class="p6-tester">
+      <div class="p6-node p6-node-t"><div class="p6-node-icon">💻</div><div class="p6-node-label">TESTER</div></div>
+      <div class="p6-node-name">诊断仪</div>
+    </div>
+    <div class="p6-ecu">
+      <div class="p6-node p6-node-e"><div class="p6-node-icon">🔧</div><div class="p6-node-label">ECU</div></div>
+      <div class="p6-node-name">控制单元</div>
+    </div>
+    <div class="p6-bus"></div>
+    <div class="p6-pkt-req">2E F1 90 ...</div>
+    <div class="p6-pkt-res">6E F1 90</div>
+    <div class="p6-label-req">→ WriteDataByIdentifier 请求</div>
+    <div class="p6-label-res">← Positive Response</div>
+    <div class="p6-hint">按空格键 / 点击"播放"查看数据流动画</div>
+  </div>
+</div>
+
+<!-- PAGE -->
+
+<!-- ========== 第7页：应用场景 ========== -->
+<style>
+/* 应用场景页：卡片网格 */
+.p7-page{background:radial-gradient(ellipse at 50% 30%,#0d1a30 0%,#060c18 70%,#000 100%)}
+.p7-h{font-size:30px;font-weight:700;margin-bottom:6px;text-align:center}
+.p7-h span{color:#00e5ff}
+.p7-line{width:56px;height:3px;background:#00e5ff;border-radius:2px;margin:0 auto 30px}
+
+/* 2×2 卡片网格 */
+.p7-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;max-width:820px;width:100%}
+.p7-card{background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:14px;padding:24px 22px;display:flex;gap:16px;align-items:flex-start}
+.p7-icon{font-size:32px;flex-shrink:0;margin-top:2px}
+.p7-ct{font-size:15px;font-weight:700;color:#00e5ff;margin-bottom:8px}
+.p7-cb{font-size:13px;color:rgba(255,255,255,0.62);line-height:1.7}
+.p7-mono{font-family:monospace;background:rgba(0,229,255,0.1);color:#64b4ff;padding:1px 6px;border-radius:3px;font-size:12px}
+
+/* 入场动画 */
+.p7-h,.p7-line,.p7-card{opacity:0;transform:translateY(22px);transition:opacity .5s ease,transform .5s ease}
+.page.entered .p7-h   {opacity:1;transform:translateY(0);transition-delay:.1s}
+.page.entered .p7-line{opacity:1;transform:translateY(0);transition-delay:.2s}
+.page.entered .p7-card:nth-child(1){opacity:1;transform:translateY(0);transition-delay:.3s}
+.page.entered .p7-card:nth-child(2){opacity:1;transform:translateY(0);transition-delay:.42s}
+.page.entered .p7-card:nth-child(3){opacity:1;transform:translateY(0);transition-delay:.54s}
+.page.entered .p7-card:nth-child(4){opacity:1;transform:translateY(0);transition-delay:.66s}
+</style>
+<div class="page p7-page">
+  <div class="p7-h">应用场景 — <span>Use Cases</span></div>
+  <div class="p7-line"></div>
+  <div class="p7-grid">
+    <div class="p7-card">
+      <div class="p7-icon">🔑</div>
+      <div>
+        <div class="p7-ct">VIN 码写入</div>
+        <div class="p7-cb">生产线下线时烧录车辆识别码，DID <span class="p7-mono">0xF190</span>，数据长度固定 17 字节，需在编程会话（0x02）下执行。</div>
+      </div>
+    </div>
+    <div class="p7-card">
+      <div class="p7-icon">⚙️</div>
+      <div>
+        <div class="p7-ct">标定数据写入</div>
+        <div class="p7-cb">将标定工具计算的 MAP 数据写入 ECU，如喷油量、点火提前角等参数，通常需要安全访问（0x27）解锁后才可写入。</div>
+      </div>
+    </div>
+    <div class="p7-card">
+      <div class="p7-icon">🔧</div>
+      <div>
+        <div class="p7-ct">功能配置开关</div>
+        <div class="p7-cb">写入车辆配置字节，启用或禁用特定功能（如自动启停、车道保持），DID 由 OEM 自定义，通常在扩展会话（0x03）下操作。</div>
+      </div>
+    </div>
+    <div class="p7-card">
+      <div class="p7-icon">📋</div>
+      <div>
+        <div class="p7-ct">ECU 软件版本信息</div>
+        <div class="p7-cb">刷写后更新 ECU 内部版本号、零件号等标识信息，DID <span class="p7-mono">0xF187</span>~<span class="p7-mono">0xF18C</span>，确保售后诊断可追溯。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE-NAV-BEGIN -->
+<style>
+body{margin:0;overflow:hidden}
+.pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px)}
+.pnav button:hover{background:rgba(0,102,255,0.6)}
+.pnav button:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999}
+</style>
+<div class="pnav"><button id="btn-prev">上一页</button><button id="btn-replay">播放</button><button id="btn-next">下一页</button></div>
+<div class="pc" id="pc"></div>
+<script>
+(function(){
+var pages=[...document.querySelectorAll('.page')],cur=0,busy=false;
+pages.forEach(function(p,i){p.style.position='fixed';p.style.inset='0';p.style.transition='transform .45s cubic-bezier(.4,0,.2,1),opacity .45s';p.style.transform=i===0?'translate(0,0)':'translate(0,100%)';p.style.opacity=i===0?'1':'0';p.style.overflow='auto';});
+function updateNav(){document.getElementById('btn-prev').disabled=cur===0;document.getElementById('btn-next').disabled=cur===pages.length-1;document.getElementById('pc').textContent=(cur+1)+' / '+pages.length;}
+function go(d){if(busy||cur+d<0||cur+d>=pages.length)return;busy=true;var from=pages[cur],to=pages[cur+d],sign=d>0?1:-1;to.style.transform='translate(0,'+(sign*100)+'%)';to.style.opacity='1';void to.offsetWidth;to.style.transform='translate(0,0)';from.style.transform='translate(0,'+(-sign*100)+'%)';from.style.opacity='0';cur+=d;updateNav();setTimeout(function(){busy=false;from.classList.remove('entered');to.classList.remove('entered');void to.offsetWidth;to.classList.add('entered');},480);}
+function replay(){var p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible');}
+document.getElementById('btn-prev').onclick=function(){go(-1);};
+document.getElementById('btn-next').onclick=function(){go(1);};
+document.getElementById('btn-replay').onclick=replay;
+document.addEventListener('keydown',function(e){if(['ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowDown')go(1);if(e.key==='ArrowUp')go(-1);if(e.key===' ')replay();});
+updateNav();setTimeout(function(){pages[0].classList.add('entered');},50);
+})();
+</script>
+<!-- SLIDE-NAV-END -->
+</body>
+</html>
