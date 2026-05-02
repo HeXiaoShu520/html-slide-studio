@@ -11,7 +11,8 @@ export default defineConfig({
     {
       name: 'cors-proxy',
       configureServer(server) {
-        server.middlewares.use('/api-proxy', (req: IncomingMessage, res: ServerResponse) => {
+        server.middlewares.use((req: IncomingMessage, res: ServerResponse, next) => {
+          if (!req.url?.startsWith('/api-proxy')) return next()
           const target = req.headers['x-target'] as string
           if (!target) { res.statusCode = 400; res.end('missing x-target header'); return }
           const chunks: Buffer[] = []

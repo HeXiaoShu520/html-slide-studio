@@ -30,18 +30,36 @@ export const BASE_COMPONENT_CSS = `
 .packet-table th,.packet-table td{border:1px solid rgba(255,255,255,0.15);padding:10px 15px;text-align:left}
 .packet-table th{background:var(--primary,#0066FF);color:#fff}
 .packet-table tr:nth-child(even){background:rgba(255,255,255,0.03)}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes slideInLeft{from{opacity:0;transform:translateX(-50px)}to{opacity:1;transform:translateX(0)}}
-@keyframes slideInRight{from{opacity:0;transform:translateX(50px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes slideInLeft{to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{to{opacity:1;transform:translateX(0)}}
+@keyframes zoomIn{to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{to{opacity:1;transform:scale(1)}}
+@keyframes rotateIn{to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes bounceIn{0%{opacity:0;transform:scale(0.3)}50%{transform:scale(1.05)}70%{transform:scale(0.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes flipIn{to{opacity:1;transform:perspective(400px) rotateY(0)}}
 .animate-in{opacity:0;transform:translateY(30px)}
+.animate-down{opacity:0;transform:translateY(-30px)}
 .animate-fade{opacity:0}
 .animate-left{opacity:0;transform:translateX(-50px)}
 .animate-right{opacity:0;transform:translateX(50px)}
-.page.entered .animate-in{animation:fadeInUp .6s ease forwards}
-.page.entered .animate-fade{animation:fadeIn .6s ease forwards}
-.page.entered .animate-left{animation:slideInLeft .6s ease forwards}
-.page.entered .animate-right{animation:slideInRight .6s ease forwards}
+.animate-zoom{opacity:0;transform:scale(0.8)}
+.animate-zoom-out{opacity:0;transform:scale(1.2)}
+.animate-rotate{opacity:0;transform:rotate(-180deg) scale(0.8)}
+.animate-bounce{opacity:0;transform:scale(0.3)}
+.animate-flip{opacity:0;transform:perspective(400px) rotateY(90deg)}
+.page.entered .animate-in{animation:fadeInUp .5s ease-out forwards}
+.page.entered .animate-down{animation:fadeInDown .5s ease-out forwards}
+.page.entered .animate-fade{animation:fadeIn .5s ease-out forwards}
+.page.entered .animate-left{animation:slideInLeft .5s ease-out forwards}
+.page.entered .animate-right{animation:slideInRight .5s ease-out forwards}
+.page.entered .animate-zoom{animation:zoomIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-zoom-out{animation:zoomOut .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-rotate{animation:rotateIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-bounce{animation:bounceIn .5s cubic-bezier(.68,-0.55,.27,1.55) forwards}
+.page.entered .animate-flip{animation:flipIn .5s ease-out forwards}
 `
 
 export function getThemeCSS(themeId: ThemeId): string {

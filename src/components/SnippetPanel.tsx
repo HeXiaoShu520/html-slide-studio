@@ -181,16 +181,56 @@ export default function SnippetPanel({ editorRef }: Props) {
   const [vals, setVals] = useState<Record<string, string>>({})
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('left')
+  const [enterAnim, setEnterAnim] = useState<'' | 'animate-in' | 'animate-down' | 'animate-fade' | 'animate-left' | 'animate-right' | 'animate-zoom' | 'animate-zoom-out' | 'animate-rotate' | 'animate-bounce' | 'animate-flip'>('')
+  const [animDelay, setAnimDelay] = useState(0)
+  const [animDuration, setAnimDuration] = useState(0.5)
   const alignRef = useRef(align)
 
   const previewSrcdoc = useMemo(() => {
     if (!active) return ''
-    // 预览时用 objectURL 替换图片字段
     const previewVals = { ...vals }
     active.fields?.forEach(f => { if (f.type === 'image' && previewUrls[f.key]) previewVals[f.key] = previewUrls[f.key] })
-    const html = active.build(previewVals)
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><style>${PREVIEW_BASE_CSS}</style></head><body>${html}</body></html>`
-  }, [active, vals, previewUrls])
+    let html = active.build(previewVals)
+
+    // 应用动画到预览（预览不使用延迟，只使用时长）
+    if (enterAnim) {
+      html = `<div class="${enterAnim}" style="animation-duration:${animDuration}s">\n${html}\n</div>`
+    }
+
+    const animCSS = `
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes slideInLeft{to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{to{opacity:1;transform:translateX(0)}}
+@keyframes zoomIn{to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{to{opacity:1;transform:scale(1)}}
+@keyframes rotateIn{to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes bounceIn{0%{opacity:0;transform:scale(0.3)}50%{transform:scale(1.05)}70%{transform:scale(0.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes flipIn{to{opacity:1;transform:perspective(400px) rotateY(0)}}
+.animate-in{opacity:0;transform:translateY(30px)}
+.animate-down{opacity:0;transform:translateY(-30px)}
+.animate-fade{opacity:0}
+.animate-left{opacity:0;transform:translateX(-50px)}
+.animate-right{opacity:0;transform:translateX(50px)}
+.animate-zoom{opacity:0;transform:scale(0.8)}
+.animate-zoom-out{opacity:0;transform:scale(1.2)}
+.animate-rotate{opacity:0;transform:rotate(-180deg) scale(0.8)}
+.animate-bounce{opacity:0;transform:scale(0.3)}
+.animate-flip{opacity:0;transform:perspective(400px) rotateY(90deg)}
+.page.entered .animate-in{animation:fadeInUp ease-out forwards}
+.page.entered .animate-down{animation:fadeInDown ease-out forwards}
+.page.entered .animate-fade{animation:fadeIn ease-out forwards}
+.page.entered .animate-left{animation:slideInLeft ease-out forwards}
+.page.entered .animate-right{animation:slideInRight ease-out forwards}
+.page.entered .animate-zoom{animation:zoomIn cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-zoom-out{animation:zoomOut cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-rotate{animation:rotateIn cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-bounce{animation:bounceIn cubic-bezier(.68,-0.55,.27,1.55) forwards}
+.page.entered .animate-flip{animation:flipIn ease-out forwards}`
+
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${PREVIEW_BASE_CSS}${animCSS}</style></head><body><div class="page entered">${html}</div><script>setTimeout(()=>{document.querySelector('.page').classList.add('entered')},50)<\/script></body></html>`
+  }, [active, vals, previewUrls, enterAnim, animDelay, animDuration])
 
   const open = (s: Snippet) => {
     if (!s.fields) { editorRef.current?.insertSnippet(s.build({})); return }
@@ -203,7 +243,15 @@ export default function SnippetPanel({ editorRef }: Props) {
 
   const confirm = () => {
     if (!active) return
-    const html = active.build(vals)
+    let html = active.build(vals)
+
+    // 应用入场动画
+    if (enterAnim) {
+      // 包装在一个div中，直接应用动画
+      html = `<div class="${enterAnim}" style="animation-delay:${animDelay}s;animation-duration:${animDuration}s">\n${html}\n</div>`
+    }
+
+    // 应用对齐
     const marginStyle = { left: 'margin-right:auto', center: 'margin:0 auto', right: 'margin-left:auto' }[align]
     const wrapped = align === 'left' ? html
       : `<div style="width:fit-content;${marginStyle}">\n${html}\n</div>`
@@ -277,25 +325,46 @@ export default function SnippetPanel({ editorRef }: Props) {
               {/* 右侧预览 */}
               <div style={{ flex: 1, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--atag-border)', background: '#0a0e1a' }}>
                 <div style={{ fontSize: 10, color: 'var(--atag-text-muted)', padding: '4px 8px', borderBottom: '1px solid var(--atag-border)' }}>预览</div>
-                <iframe srcDoc={previewSrcdoc} sandbox="allow-scripts" style={{ width: '100%', height: 'calc(100% - 24px)', border: 'none' }} />
+                <iframe key={`${enterAnim}-${animDuration}`} srcDoc={previewSrcdoc} sandbox="allow-scripts" style={{ width: '100%', height: 'calc(100% - 24px)', border: 'none' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', marginRight: 4 }}>对齐</span>
-                {(['left', 'center', 'right'] as const).map(a => (
-                  <button key={a} onClick={() => setAlign(a)}
-                    style={{ padding: '4px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: '1px solid ' + (align === a ? 'var(--atag-primary)' : 'var(--atag-border)'), background: align === a ? 'var(--atag-primary)' : 'transparent', color: align === a ? '#fff' : 'var(--atag-text-muted)' }}>
-                    {{ left: '左', center: '居中', right: '右' }[a]}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', marginRight: 4 }}>对齐</span>
+              {(['left', 'center', 'right'] as const).map(a => (
+                <button key={a} onClick={() => setAlign(a)}
+                  style={{ padding: '4px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: '1px solid ' + (align === a ? 'var(--atag-primary)' : 'var(--atag-border)'), background: align === a ? 'var(--atag-primary)' : 'transparent', color: align === a ? '#fff' : 'var(--atag-text-muted)' }}>
+                  {{ left: '左', center: '居中', right: '右' }[a]}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', marginRight: 4 }}>入场动画</span>
+              {([
+                ['', '无'], ['animate-in', '上移'], ['animate-down', '下移'], ['animate-fade', '淡入'],
+                ['animate-left', '左入'], ['animate-right', '右入'], ['animate-zoom', '放大'],
+                ['animate-zoom-out', '缩小'], ['animate-rotate', '旋转'], ['animate-bounce', '弹跳'], ['animate-flip', '翻转']
+              ] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setEnterAnim(val)}
+                  style={{ padding: '4px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: '1px solid ' + (enterAnim === val ? 'var(--atag-primary)' : 'var(--atag-border)'), background: enterAnim === val ? 'var(--atag-primary)' : 'transparent', color: enterAnim === val ? '#fff' : 'var(--atag-text-muted)' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', marginRight: 4 }}>延迟</span>
+              <input type="range" min="0" max="10" step="0.1" value={animDelay} onChange={e => setAnimDelay(Number(e.target.value))}
+                style={{ width: 80, accentColor: 'var(--atag-primary)' }} />
+              <span style={{ fontSize: 11, color: 'var(--atag-text)', minWidth: 32 }}>{animDelay}s</span>
+              <span style={{ fontSize: 11, color: 'var(--atag-text-muted)', marginLeft: 16 }}>时长</span>
+              <input type="range" min="0.1" max="3" step="0.1" value={animDuration} onChange={e => setAnimDuration(Number(e.target.value))}
+                style={{ width: 80, accentColor: 'var(--atag-primary)' }} />
+              <span style={{ fontSize: 11, color: 'var(--atag-text)', minWidth: 32 }}>{animDuration}s</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setActive(null)}
                 style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', fontSize: 12, cursor: 'pointer' }}>取消</button>
               <button onClick={confirm}
                 style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: 'var(--atag-primary)', color: '#fff', fontSize: 12, cursor: 'pointer' }}>插入</button>
-              </div>
             </div>
           </div>
         </div>

@@ -7,6 +7,9 @@ export interface Slide {
   id: string
   title: string
   html: string  // 单页 HTML 片段，不含 DOCTYPE/head，由 buildSlideHtml 包壳后渲染
+  autoPlay?: boolean  // 自动播放动画
+  autoNext?: boolean  // 自动翻页
+  autoNextDelay?: number  // 自动翻页延迟（秒）
 }
 
 interface AppState {
@@ -17,6 +20,9 @@ interface AppState {
   globalCss: string          // 全局自定义 CSS，导入时从 <head> 提取，buildSlideHtml 时注入
   previewHtml: string | null // 非 null 时触发全屏演示 iframe
   showAIPanel: boolean
+  hideNavButtons: boolean    // 隐藏右下角导航按钮（仅视觉隐藏，功能保留）
+  pageTransitionDuration: number  // 翻页动画时长（秒），默认 0.4
+  globalAutoNextDelay: number     // 全局自动翻页延迟（秒），-1 表示禁用
 
   setCurrentSlideIndex: (i: number) => void
   updateCurrentSlide: (html: string) => void
@@ -30,6 +36,10 @@ interface AppState {
   setSlides: (slides: Slide[]) => void  // 导入时批量替换，index 重置为 0
   moveSlide: (from: number, to: number) => void
   insertSlide: (slide: Slide, at: number) => void
+  setHideNavButtons: (hide: boolean) => void
+  updateSlideConfig: (id: string, config: Partial<Pick<Slide, 'autoPlay' | 'autoNext' | 'autoNextDelay'>>) => void
+  setPageTransitionDuration: (duration: number) => void
+  setGlobalAutoNextDelay: (delay: number) => void
 }
 
 const DEFAULT_HTML = `<style>
@@ -54,6 +64,9 @@ export const useAppStore = create<AppState>((set) => ({
   globalCss: '',
   previewHtml: null,
   showAIPanel: false,
+  hideNavButtons: false,
+  pageTransitionDuration: 0.5,
+  globalAutoNextDelay: -1,
 
   setCurrentSlideIndex: (i) => { console.log('[store] setCurrentSlideIndex', i); set({ currentSlideIndex: i }) },
 
@@ -109,6 +122,18 @@ export const useAppStore = create<AppState>((set) => ({
     const slides = [...s.slides]
     slides.splice(at, 0, slide)
     return { slides, currentSlideIndex: at }
+  }),
+
+  setHideNavButtons: (hideNavButtons) => { console.log('[store] setHideNavButtons', hideNavButtons); set({ hideNavButtons }) },
+
+  setPageTransitionDuration: (pageTransitionDuration) => { console.log('[store] setPageTransitionDuration', pageTransitionDuration); set({ pageTransitionDuration }) },
+
+  setGlobalAutoNextDelay: (globalAutoNextDelay) => { console.log('[store] setGlobalAutoNextDelay', globalAutoNextDelay); set({ globalAutoNextDelay }) },
+
+  updateSlideConfig: (id, config) => set(s => {
+    console.log('[store] updateSlideConfig', id, config)
+    const slides = s.slides.map(sl => sl.id === id ? { ...sl, ...config } : sl)
+    return { slides }
   }),
 }))
 

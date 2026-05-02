@@ -1,0 +1,463 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>uds-10-diagnostic-session</title>
+<style>
+body{margin:0;overflow:hidden}
+.pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px);white-space:nowrap}
+.pnav button:hover{background:rgba(0,102,255,0.6)}
+.pnav button:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999}
+
+.linebreak{display:block;width:100%;height:1.2em}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:100%;max-width:1000px}
+.card{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:30px;margin:10px;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-5px);box-shadow:0 10px 40px rgba(0,102,255,0.2)}
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.85em;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));color:#fff}
+.icon-circle{width:60px;height:60px;border-radius:50%;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px}
+.flow-container{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0}
+.flow-step{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid var(--primary,#0066FF);border-radius:12px;padding:20px;text-align:center;min-width:150px}
+.flow-arrow{color:var(--primary,#0066FF);font-size:24px}
+.timeline{position:relative;max-width:600px;margin:20px auto;padding-left:30px;border-left:2px solid var(--primary,#0066FF)}
+.timeline-item{position:relative;margin-bottom:30px;padding-left:20px}
+.timeline-item::before{content:'';position:absolute;left:-36px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--primary,#0066FF)}
+.code-block{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:20px;font-family:'Consolas',monospace;font-size:14px;color:#c9d1d9;overflow-x:auto;white-space:pre;margin:15px 0}
+.packet-table{width:100%;border-collapse:collapse;margin:15px 0}
+.packet-table th,.packet-table td{border:1px solid rgba(255,255,255,0.15);padding:10px 15px;text-align:left}
+.packet-table th{background:var(--primary,#0066FF);color:#fff}
+.packet-table tr:nth-child(even){background:rgba(255,255,255,0.03)}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes slideInLeft{to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{to{opacity:1;transform:translateX(0)}}
+@keyframes zoomIn{to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{to{opacity:1;transform:scale(1)}}
+@keyframes rotateIn{to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes bounceIn{0%{opacity:0;transform:scale(0.3)}50%{transform:scale(1.05)}70%{transform:scale(0.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes flipIn{to{opacity:1;transform:perspective(400px) rotateY(0)}}
+.animate-in{opacity:0;transform:translateY(30px)}
+.animate-down{opacity:0;transform:translateY(-30px)}
+.animate-fade{opacity:0}
+.animate-left{opacity:0;transform:translateX(-50px)}
+.animate-right{opacity:0;transform:translateX(50px)}
+.animate-zoom{opacity:0;transform:scale(0.8)}
+.animate-zoom-out{opacity:0;transform:scale(1.2)}
+.animate-rotate{opacity:0;transform:rotate(-180deg) scale(0.8)}
+.animate-bounce{opacity:0;transform:scale(0.3)}
+.animate-flip{opacity:0;transform:perspective(400px) rotateY(90deg)}
+.page.entered .animate-in{animation:fadeInUp .5s ease-out forwards}
+.page.entered .animate-down{animation:fadeInDown .5s ease-out forwards}
+.page.entered .animate-fade{animation:fadeIn .4s ease-out forwards}
+.page.entered .animate-left{animation:slideInLeft .5s ease-out forwards}
+.page.entered .animate-right{animation:slideInRight .5s ease-out forwards}
+.page.entered .animate-zoom{animation:zoomIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-zoom-out{animation:zoomOut .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-rotate{animation:rotateIn .6s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-bounce{animation:bounceIn .7s cubic-bezier(.68,-0.55,.27,1.55) forwards}
+.page.entered .animate-flip{animation:flipIn .6s ease-out forwards}
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; }
+    .page { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  
+</style>
+</head><body>
+<style>
+  .p1-bg { background: radial-gradient(circle at 30% 40%, rgba(0,102,255,0.15), transparent 50%), radial-gradient(circle at 70% 60%, rgba(138,43,226,0.1), transparent 50%), linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%); }
+  .p1-title { font-size: 64px; font-weight: 800; background: linear-gradient(135deg, #66b3ff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; text-align: center; }
+  .p1-subtitle { font-size: 28px; color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 40px; }
+  .p1-desc { font-size: 18px; color: rgba(255,255,255,0.5); text-align: center; max-width: 600px; }
+</style>
+<div class="page p1-bg">
+  <div style="text-align: center;">
+    <div class="p1-title animate-zoom">🔧 UDS 10 服务</div>
+    <div class="p1-subtitle animate-in" style="animation-delay:0.2s">诊断会话控制 (Diagnostic Session Control)</div>
+    <div class="p1-desc animate-fade" style="animation-delay:0.4s">控制 ECU 进入不同诊断会话模式，是所有 UDS 诊断的入口服务</div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p2-bg { background: radial-gradient(circle at 20% 30%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 80% 70%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0f1629 0%, #1e2640 100%); }
+  .p2-container { max-width: 900px; padding: 40px; }
+  .p2-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; }
+  .p2-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .p2-card h3 { font-size: 20px; color: #66b3ff; margin-bottom: 12px; }
+  .p2-card p { font-size: 16px; color: rgba(255,255,255,0.8); line-height: 1.6; }
+  .p2-card ul { list-style: none; margin-top: 12px; }
+  .p2-card li { font-size: 15px; color: rgba(255,255,255,0.7); padding: 6px 0; padding-left: 20px; position: relative; }
+  .p2-card li:before { content: "▸"; position: absolute; left: 0; color: #66b3ff; }
+</style>
+<div class="page p2-bg">
+  <div class="p2-container">
+    <h1 class="p2-heading animate-in">📋 服务概述</h1>
+    <div class="p2-card animate-in" style="animation-delay:0.1s">
+      <h3>🎯 服务 ID</h3>
+      <p><strong>0x10</strong> - DiagnosticSessionControl</p>
+    </div>
+    <div class="p2-card animate-in" style="animation-delay:0.2s">
+      <h3>💡 核心功能</h3>
+      <p>切换 ECU 的诊断会话模式，不同模式下可执行的诊断功能不同</p>
+    </div>
+    <div class="p2-card animate-in" style="animation-delay:0.3s">
+      <h3>🔑 常见会话类型</h3>
+      <ul>
+        <li><strong>0x01</strong> - 默认会话 (Default Session)</li>
+        <li><strong>0x02</strong> - 编程会话 (Programming Session)</li>
+        <li><strong>0x03</strong> - 扩展诊断会话 (Extended Diagnostic Session)</li>
+        <li><strong>0x40-0x5F</strong> - 车辆制造商自定义会话</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p3-bg { background: radial-gradient(circle at 25% 35%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 75% 65%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0d1424 0%, #1c2538 100%); }
+  .p3-container { max-width: 1100px; padding: 40px; }
+  .p3-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
+  .p3-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+  .p3-session-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,102,255,0.3); border-radius: 16px; padding: 28px; }
+  .p3-session-card h3 { font-size: 22px; color: #66b3ff; margin-bottom: 8px; }
+  .p3-session-card .p3-code { display: inline-block; background: rgba(0,102,255,0.2); color: #a8dadc; padding: 4px 10px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 14px; margin-bottom: 16px; }
+  .p3-session-card p { font-size: 15px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 12px; }
+  .p3-session-card ul { list-style: none; margin-top: 12px; }
+  .p3-session-card li { font-size: 14px; color: rgba(255,255,255,0.7); padding: 4px 0; padding-left: 18px; position: relative; }
+  .p3-session-card li:before { content: "✓"; position: absolute; left: 0; color: #4ade80; }
+</style>
+<div class="page p3-bg">
+  <div class="p3-container">
+    <h1 class="p3-heading animate-in">🔐 会话类型详解</h1>
+    <div class="p3-grid">
+      <div class="p3-session-card animate-left" style="animation-delay:0.1s">
+        <h3>🏠 默认会话</h3>
+        <span class="p3-code">0x01 - Default Session</span>
+        <p>ECU 上电后的初始状态，功能受限</p>
+        <ul>
+          <li>读取基础故障码</li>
+          <li>读取车辆信息</li>
+          <li>不允许写入操作</li>
+          <li>不允许刷写程序</li>
+        </ul>
+      </div>
+      <div class="p3-session-card animate-in" style="animation-delay:0.2s">
+        <h3>🔧 扩展诊断会话</h3>
+        <span class="p3-code">0x03 - Extended Diagnostic</span>
+        <p>用于深度诊断和参数调整</p>
+        <ul>
+          <li>读写 DID 数据</li>
+          <li>执行例程测试</li>
+          <li>清除故障码</li>
+          <li>IO 控制</li>
+        </ul>
+      </div>
+      <div class="p3-session-card animate-right" style="animation-delay:0.3s">
+        <h3>💾 编程会话</h3>
+        <span class="p3-code">0x02 - Programming Session</span>
+        <p>用于 ECU 软件刷写和标定</p>
+        <ul>
+          <li>下载应用程序</li>
+          <li>刷写 Flash</li>
+          <li>更新标定数据</li>
+          <li>需要安全访问</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p4-bg { background: radial-gradient(circle at 30% 40%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 70% 60%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0e1528 0%, #1d2742 100%); }
+  .p4-container { max-width: 1000px; padding: 40px; }
+  .p4-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
+  .p4-message-block { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 28px; margin-bottom: 24px; }
+  .p4-message-block h3 { font-size: 24px; color: #66b3ff; margin-bottom: 16px; }
+  .p4-table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.3); border-radius: 8px; overflow: hidden; margin-top: 12px; }
+  .p4-table th { background: rgba(0,102,255,0.25); color: #fff; padding: 14px; text-align: center; font-weight: 600; font-size: 15px; }
+  .p4-table td { padding: 14px; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); text-align: center; font-family: 'Consolas', monospace; font-size: 14px; }
+  .p4-table td:first-child { color: #a8dadc; font-weight: 600; }
+</style>
+<div class="page p4-bg">
+  <div class="p4-container">
+    <h1 class="p4-heading animate-in">📦 报文格式</h1>
+    <div class="p4-message-block animate-in" style="animation-delay:0.1s">
+      <h3>📤 请求报文 (Request)</h3>
+      <table class="p4-table">
+        <thead>
+          <tr><th>字节位置</th><th>参数名称</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Byte 0</td><td>SID</td><td>服务标识符 = 0x10</td></tr>
+          <tr><td>Byte 1</td><td>Sub-function</td><td>会话类型 (0x01/0x02/0x03/0x40-0x5F)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="p4-message-block animate-in" style="animation-delay:0.2s">
+      <h3>📥 响应报文 (Positive Response)</h3>
+      <table class="p4-table">
+        <thead>
+          <tr><th>字节位置</th><th>参数名称</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Byte 0</td><td>SID + 0x40</td><td>肯定响应 = 0x50</td></tr>
+          <tr><td>Byte 1</td><td>Sub-function</td><td>回显请求的会话类型</td></tr>
+          <tr><td>Byte 2-3</td><td>P2 Server Max</td><td>默认超时时间 (ms, 高字节在前)</td></tr>
+          <tr><td>Byte 4-5</td><td>P2* Server Max</td><td>增强超时时间 (ms × 10)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p5-bg { background: radial-gradient(circle at 35% 45%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 65% 55%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0c1322 0%, #1b253c 100%); }
+  .p5-container { max-width: 1100px; padding: 40px; }
+  .p5-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 40px; text-align: center; }
+  .p5-flow { display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 40px; }
+  .p5-node { background: rgba(0,102,255,0.2); border: 2px solid rgba(0,102,255,0.5); border-radius: 16px; padding: 24px 32px; color: #fff; font-weight: 600; text-align: center; min-width: 180px; font-size: 16px; }
+  .p5-node.tester { background: rgba(138,43,226,0.2); border-color: rgba(138,43,226,0.5); }
+  .p5-arrow { color: rgba(255,255,255,0.4); font-size: 32px; }
+  .p5-steps { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 28px; }
+  .p5-steps h3 { font-size: 22px; color: #66b3ff; margin-bottom: 16px; }
+  .p5-steps ol { list-style: none; counter-reset: step; }
+  .p5-steps li { font-size: 16px; color: rgba(255,255,255,0.8); padding: 10px 0; padding-left: 40px; position: relative; line-height: 1.6; }
+  .p5-steps li:before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 8px; width: 28px; height: 28px; background: rgba(0,102,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #66b3ff; font-weight: 700; font-size: 14px; }
+</style>
+<div class="page p5-bg">
+  <div class="p5-container">
+    <h1 class="p5-heading animate-in">🔄 通信流程</h1>
+    <div class="p5-flow animate-fade" style="animation-delay:0.1s">
+      <div class="p5-node tester">诊断仪<br>(Tester)</div>
+      <div class="p5-arrow">→</div>
+      <div class="p5-node">ECU</div>
+      <div class="p5-arrow">→</div>
+      <div class="p5-node tester">诊断仪<br>(Tester)</div>
+    </div>
+    <div class="p5-steps animate-in" style="animation-delay:0.2s">
+      <h3>📝 交互步骤</h3>
+      <ol>
+        <li>诊断仪发送 <strong>0x10 + 会话类型</strong> 请求</li>
+        <li>ECU 验证请求合法性（会话类型是否支持）</li>
+        <li>ECU 切换到目标会话模式</li>
+        <li>ECU 返回 <strong>0x50 + 会话类型 + P2/P2* 超时参数</strong></li>
+        <li>诊断仪根据响应调整后续通信超时时间</li>
+      </ol>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p6-bg { background: radial-gradient(circle at 25% 35%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 75% 65%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0d1525 0%, #1c2639 100%); }
+  .p6-container { max-width: 1100px; padding: 40px; }
+  .p6-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
+  .p6-example { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 28px; margin-bottom: 24px; }
+  .p6-example h3 { font-size: 24px; color: #66b3ff; margin-bottom: 16px; }
+  .p6-code { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; font-family: 'Consolas', monospace; font-size: 15px; line-height: 1.8; color: #a8dadc; margin-top: 12px; }
+  .p6-code .hex { color: #4ade80; font-weight: 600; }
+  .p6-code .comment { color: rgba(255,255,255,0.5); }
+</style>
+<div class="page p6-bg">
+  <div class="p6-container">
+    <h1 class="p6-heading animate-in">💻 实例 1：切换到扩展诊断会话</h1>
+    <div class="p6-example animate-in" style="animation-delay:0.1s">
+      <h3>📤 请求报文</h3>
+      <div class="p6-code">
+        <span class="hex">10 03</span><br>
+        <span class="comment">// 10 = 服务ID (DiagnosticSessionControl)</span><br>
+        <span class="comment">// 03 = 扩展诊断会话</span>
+      </div>
+    </div>
+    <div class="p6-example animate-in" style="animation-delay:0.2s">
+      <h3>📥 响应报文</h3>
+      <div class="p6-code">
+        <span class="hex">50 03 00 32 01 F4</span><br>
+        <span class="comment">// 50 = 肯定响应 (0x10 + 0x40)</span><br>
+        <span class="comment">// 03 = 回显会话类型</span><br>
+        <span class="comment">// 00 32 = P2 Server Max = 50ms</span><br>
+        <span class="comment">// 01 F4 = P2* Server Max = 5000ms (500 × 10)</span>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p7-bg { background: radial-gradient(circle at 30% 40%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 70% 60%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0e1628 0%, #1d2741 100%); }
+  .p7-container { max-width: 1100px; padding: 40px; }
+  .p7-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
+  .p7-example { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 28px; margin-bottom: 24px; }
+  .p7-example h3 { font-size: 24px; color: #66b3ff; margin-bottom: 16px; }
+  .p7-code { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; font-family: 'Consolas', monospace; font-size: 15px; line-height: 1.8; color: #a8dadc; margin-top: 12px; }
+  .p7-code .hex { color: #4ade80; font-weight: 600; }
+  .p7-code .comment { color: rgba(255,255,255,0.5); }
+</style>
+<div class="page p7-bg">
+  <div class="p7-container">
+    <h1 class="p7-heading animate-in">💻 实例 2：切换到编程会话</h1>
+    <div class="p7-example animate-in" style="animation-delay:0.1s">
+      <h3>📤 请求报文</h3>
+      <div class="p7-code">
+        <span class="hex">10 02</span><br>
+        <span class="comment">// 10 = 服务ID (DiagnosticSessionControl)</span><br>
+        <span class="comment">// 02 = 编程会话</span>
+      </div>
+    </div>
+    <div class="p7-example animate-in" style="animation-delay:0.2s">
+      <h3>📥 响应报文</h3>
+      <div class="p7-code">
+        <span class="hex">50 02 00 64 03 E8</span><br>
+        <span class="comment">// 50 = 肯定响应</span><br>
+        <span class="comment">// 02 = 回显会话类型</span><br>
+        <span class="comment">// 00 64 = P2 Server Max = 100ms</span><br>
+        <span class="comment">// 03 E8 = P2* Server Max = 10000ms (1000 × 10)</span>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p8-bg { background: radial-gradient(circle at 35% 45%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 65% 55%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0f1729 0%, #1e2843 100%); }
+  .p8-container { max-width: 1100px; padding: 40px; }
+  .p8-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
+  .p8-example { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 28px; margin-bottom: 24px; }
+  .p8-example h3 { font-size: 24px; color: #ff6b6b; margin-bottom: 16px; }
+  .p8-code { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; font-family: 'Consolas', monospace; font-size: 15px; line-height: 1.8; color: #a8dadc; margin-top: 12px; }
+  .p8-code .hex { color: #ff6b6b; font-weight: 600; }
+  .p8-code .comment { color: rgba(255,255,255,0.5); }
+  .p8-note { background: rgba(255,107,107,0.1); border-left: 4px solid #ff6b6b; padding: 16px; border-radius: 8px; margin-top: 16px; }
+  .p8-note p { font-size: 15px; color: rgba(255,255,255,0.8); line-height: 1.6; }
+</style>
+<div class="page p8-bg">
+  <div class="p8-container">
+    <h1 class="p8-heading animate-in">❌ 实例 3：否定响应</h1>
+    <div class="p8-example animate-in" style="animation-delay:0.1s">
+      <h3>📤 请求报文</h3>
+      <div class="p8-code">
+        <span class="hex">10 05</span><br>
+        <span class="comment">// 10 = 服务ID</span><br>
+        <span class="comment">// 05 = 不支持的会话类型</span>
+      </div>
+    </div>
+    <div class="p8-example animate-in" style="animation-delay:0.2s">
+      <h3>📥 否定响应报文</h3>
+      <div class="p8-code">
+        <span class="hex">7F 10 12</span><br>
+        <span class="comment">// 7F = 否定响应标识</span><br>
+        <span class="comment">// 10 = 请求的服务ID</span><br>
+        <span class="comment">// 12 = NRC (Sub-Function Not Supported)</span>
+      </div>
+      <div class="p8-note">
+        <p><strong>常见否定响应码 (NRC)：</strong><br>
+        0x12 - 子功能不支持<br>
+        0x13 - 报文长度或格式错误<br>
+        0x22 - 当前会话不允许此操作<br>
+        0x33 - 安全访问被拒绝</p>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+  .p9-bg { background: radial-gradient(circle at 30% 40%, rgba(0,102,255,0.12), transparent 50%), radial-gradient(circle at 70% 60%, rgba(138,43,226,0.08), transparent 50%), linear-gradient(135deg, #0d1423 0%, #1c2537 100%); }
+  .p9-container { max-width: 1100px; padding: 40px; }
+  .p9-heading { font-size: 42px; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
+  .p9-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .p9-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,102,255,0.3); border-radius: 16px; padding: 28px; }
+  .p9-card h3 { font-size: 22px; color: #66b3ff; margin-bottom: 12px; }
+  .p9-card p { font-size: 15px; color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 12px; }
+  .p9-card ul { list-style: none; margin-top: 12px; }
+  .p9-card li { font-size: 14px; color: rgba(255,255,255,0.7); padding: 6px 0; padding-left: 18px; position: relative; }
+  .p9-card li:before { content: "▸"; position: absolute; left: 0; color: #66b3ff; }
+</style>
+<div class="page p9-bg">
+  <div class="p9-container">
+    <h1 class="p9-heading animate-in">🎯 应用场景</h1>
+    <div class="p9-grid">
+      <div class="p9-card animate-left" style="animation-delay:0.1s">
+        <h3>🔍 故障诊断</h3>
+        <p>切换到扩展诊断会话，读取详细故障信息</p>
+        <ul>
+          <li>读取冻结帧数据</li>
+          <li>执行诊断例程</li>
+          <li>清除故障码</li>
+        </ul>
+      </div>
+      <div class="p9-card animate-in" style="animation-delay:0.2s">
+        <h3>💾 ECU 刷写</h3>
+        <p>切换到编程会话，进行软件更新</p>
+        <ul>
+          <li>下载应用程序</li>
+          <li>刷写 Flash 存储器</li>
+          <li>更新标定数据</li>
+        </ul>
+      </div>
+      <div class="p9-card animate-right" style="animation-delay:0.3s">
+        <h3>⚙️ 参数配置</h3>
+        <p>在扩展会话中调整 ECU 参数</p>
+        <ul>
+          <li>写入配置数据</li>
+          <li>执行 IO 控制</li>
+          <li>调整运行参数</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- SLIDE-NAV-BEGIN -->
+<div class="pnav"><button id="btn-prev">上一页</button><button id="btn-replay">播放</button><button id="btn-next">下一页</button></div>
+<div class="pc" id="pc"></div>
+<script>window.slideConfigs=[{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3}];
+const pages=[...document.querySelectorAll('.page')];
+let cur=0,busy=false,autoTimer=null;
+pages.forEach((p,i)=>{
+  p.style.position='fixed';
+  p.style.inset='0';
+  p.style.transition='transform 0.5s cubic-bezier(.4,0,.2,1)';
+  p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';
+  p.style.opacity=i===0?'1':'0';
+  p.style.overflow='auto';
+  p.style.willChange='transform';
+  if(i===0)p.classList.add('entered');
+});
+function updateNav(){
+  const btns=document.querySelectorAll('.pnav button');
+  if(btns[0])btns[0].disabled=cur===0;
+  if(btns[2])btns[2].disabled=cur===pages.length-1;
+}
+function go(d,axis){
+  axis=axis||'y';
+  if(busy||cur+d<0||cur+d>=pages.length)return;
+  busy=true;
+  if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
+  const from=pages[cur],to=pages[cur+d];
+  const sign=d>0?1:-1;
+  from.classList.remove('entered');
+  to.style.transform='translate3d('+(axis==='x'?(sign*100):0)+'%,'+(axis==='y'?(sign*100):0)+'%,0)';
+  to.style.opacity='1';
+  void to.offsetWidth;
+  to.style.transform='translate3d(0,0,0)';
+  from.style.transform='translate3d('+(axis==='x'?(-sign*100):0)+'%,'+(axis==='y'?(-sign*100):0)+'%,0)';
+  from.style.opacity='0';
+  cur+=d;
+  const c=document.getElementById('pc');
+  if(c)c.textContent=(cur+1)+' / '+pages.length;
+  updateNav();
+  setTimeout(()=>{
+    busy=false;
+    to.classList.add('entered');
+    const cfg=window.slideConfigs?.[cur];
+    if(cfg?.autoPlay)replayPage();
+    if(cfg?.autoNext&&cfg.autoNextDelay>0){
+      autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);
+    }
+  },580);
+}
+function replayPage(){const p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible');}
+document.addEventListener('keydown',e=>{
+  if(['ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
+  if(e.key==='ArrowDown')go(1,'y');
+  if(e.key==='ArrowUp')go(-1,'y');
+  if(e.key===' ')replayPage();
+});
+cur=0;pages.forEach((p,i)=>{p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';p.style.opacity=i===0?'1':'0';if(i===0)p.classList.add('entered');});document.getElementById('btn-prev').onclick=function(){go(-1);};document.getElementById('btn-next').onclick=function(){go(1);};document.getElementById('btn-replay').onclick=function(){replayPage();};updateNav();setTimeout(()=>{const cfg=window.slideConfigs?.[cur];if(cfg?.autoPlay)replayPage();if(cfg?.autoNext&&cfg.autoNextDelay>0)autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);},50);</script>
+<!-- SLIDE-NAV-END -->
+</body></html>

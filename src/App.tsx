@@ -12,7 +12,7 @@ import { getThemeCSS } from './themes/themeCSS'
 import { buildPresentHtml } from './utils/buildSlideHtml'
 
 export default function App() {
-  const { slides, currentSlideIndex, currentTheme, globalCss, updateCurrentSlide, setPreviewHtml, previewHtml, showAIPanel, setTheme } = useAppStore()
+  const { slides, currentSlideIndex, currentTheme, globalCss, updateCurrentSlide, setPreviewHtml, previewHtml, showAIPanel, setTheme, hideNavButtons, setHideNavButtons, updateSlideConfig, pageTransitionDuration, setPageTransitionDuration, globalAutoNextDelay, setGlobalAutoNextDelay } = useAppStore()
   const editorRef = useRef<CodeEditorHandle>(null)
   const aiRef = useRef<AIAssistantHandle>(null)
   const previewRef = useRef<PreviewFrameHandle>(null)
@@ -121,45 +121,82 @@ export default function App() {
         </div>
         {/* 右侧：预览区 */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--atag-border)', background: 'var(--atag-bg-panel)', flexShrink: 0 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', userSelect: 'none' }}>
-              刷新间隔
-              <input type="number" value={refreshInterval}
-                onChange={e => { const v = Number(e.target.value); setRefreshInterval(v); refreshIntervalRef.current = v }}
-                style={{ width: 56, background: 'var(--atag-bg-card)', border: '1px solid var(--atag-border)', borderRadius: 4, padding: '2px 6px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', appearance: 'textfield' }} />
-              s
-            </label>
-            <button onClick={() => {
-                if (debounceRef.current) clearTimeout(debounceRef.current)
-                const html = editorRef.current?.getValue() ?? useAppStore.getState().slides[useAppStore.getState().currentSlideIndex]?.html ?? ''
-                updateCurrentSlide(html)
-                setPreviewSlideHtml(html)
-              }}
-              style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}>刷新</button>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', cursor: 'pointer', userSelect: 'none' }}>
-              <input type="checkbox" checked={enterAnim} onChange={e => setEnterAnim(e.target.checked)} style={{ cursor: 'pointer' }} />
-              入场动画
-            </label>
-            <div style={{ width: 1, height: 16, background: 'var(--atag-border)', margin: '0 2px' }} />
-            <button
-              onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName, currentSlideIndex))}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
-            ><Eye size={13} />从本页播放</button>
-            <button
-              onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName, 0))}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid var(--atag-border)', background: 'transparent', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
-            ><Play size={13} />从头播放</button>
-            <div style={{ width: 1, height: 16, background: 'var(--atag-border)', margin: '0 2px' }} />
-            {(['none', 'dark-tech', 'mechanical'] as const).map(id => (
-              <button key={id} onClick={() => setTheme(id)}
-                style={{ padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: '1px solid ' + (currentTheme === id ? 'var(--atag-primary)' : 'var(--atag-border)'), background: currentTheme === id ? 'var(--atag-primary)' : 'transparent', color: currentTheme === id ? '#fff' : 'var(--atag-text-muted)' }}>
-                {{ none: '原始', 'dark-tech': '暗黑', mechanical: '机械' }[id]}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 12px', borderBottom: '1px solid var(--atag-border)', background: 'var(--atag-bg-panel)', flexShrink: 0 }}>
+            {/* 全局设置 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, background: 'rgba(0, 102, 255, 0.15)', border: '1px solid rgba(0, 102, 255, 0.4)' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#0066ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>全局设置</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', userSelect: 'none' }}>
+                刷新间隔
+                <input type="number" value={refreshInterval}
+                  onChange={e => { const v = Number(e.target.value); setRefreshInterval(v); refreshIntervalRef.current = v }}
+                  style={{ width: 56, background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(0, 102, 255, 0.5)', borderRadius: 4, padding: '2px 6px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', appearance: 'textfield' }} />
+                s
+              </label>
+              <button onClick={() => {
+                  if (debounceRef.current) clearTimeout(debounceRef.current)
+                  const html = editorRef.current?.getValue() ?? useAppStore.getState().slides[useAppStore.getState().currentSlideIndex]?.html ?? ''
+                  updateCurrentSlide(html)
+                  setPreviewSlideHtml(html)
+                }}
+                style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0, 102, 255, 0.5)', background: 'rgba(0, 0, 0, 0.3)', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}>刷新</button>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={hideNavButtons} onChange={e => setHideNavButtons(e.target.checked)} style={{ cursor: 'pointer' }} />
+                隐藏导航按钮
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', userSelect: 'none' }}>
+                翻页时长
+                <input type="number" min="0.1" max="2" step="0.1" value={pageTransitionDuration}
+                  onChange={e => setPageTransitionDuration(Number(e.target.value))}
+                  style={{ width: 50, background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(0, 102, 255, 0.5)', borderRadius: 4, padding: '2px 6px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', appearance: 'textfield' }} />
+                s
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', userSelect: 'none' }}>
+                全局自动翻页
+                <input type="number" min="-1" max="60" step="0.5" value={globalAutoNextDelay}
+                  onChange={e => setGlobalAutoNextDelay(Number(e.target.value))}
+                  style={{ width: 50, background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(0, 102, 255, 0.5)', borderRadius: 4, padding: '2px 6px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', appearance: 'textfield' }} />
+                s
+              </label>
+              {(['none', 'dark-tech', 'mechanical'] as const).map(id => (
+                <button key={id} onClick={() => setTheme(id)}
+                  style={{ padding: '3px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: '1px solid ' + (currentTheme === id ? '#0066ff' : 'rgba(0, 102, 255, 0.5)'), background: currentTheme === id ? '#0066ff' : 'rgba(0, 0, 0, 0.3)', color: currentTheme === id ? '#fff' : 'var(--atag-text-muted)' }}>
+                  {{ none: '原始', 'dark-tech': '暗黑', mechanical: '机械' }[id]}
+                </button>
+              ))}
+            </div>
+            <div style={{ width: 1, height: 20, background: 'var(--atag-border)' }} />
+            <div style={{ width: 1, height: 20, background: 'var(--atag-border)' }} />
+            {/* 本页设置 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>本页设置</span>
+              <button
+                onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName, currentSlideIndex, hideNavButtons, pageTransitionDuration, globalAutoNextDelay))}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.5)', background: 'rgba(0, 0, 0, 0.3)', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
+              ><Eye size={13} />从本页播放</button>
+              <button
+                onClick={() => setPreviewHtml(buildPresentHtml(slides, globalCss, themeCSS, useAppStore.getState().projectName, 0, hideNavButtons, pageTransitionDuration, globalAutoNextDelay))}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.5)', background: 'rgba(0, 0, 0, 0.3)', color: 'var(--atag-text-muted)', cursor: 'pointer', fontSize: 12 }}
+              ><Play size={13} />从头播放</button>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={currentSlide?.autoPlay || false} onChange={e => updateSlideConfig(currentSlide.id, { autoPlay: e.target.checked })} style={{ cursor: 'pointer' }} />
+                自动播放动画
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--atag-text-muted)', userSelect: 'none' }}>
+                自动翻页
+                <input type="number" value={currentSlide?.autoNext ? (currentSlide.autoNextDelay || 3) : -1}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (v < 0) updateSlideConfig(currentSlide.id, { autoNext: false });
+                    else updateSlideConfig(currentSlide.id, { autoNext: true, autoNextDelay: v });
+                  }}
+                  style={{ width: 50, background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(16, 185, 129, 0.5)', borderRadius: 4, padding: '2px 6px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', appearance: 'textfield' }} />
+                s
+              </label>
+            </div>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {currentSlide && (
-              <PreviewFrame ref={previewRef} slideHtml={previewSlideHtml} globalCss={globalCss} themeCSS={themeCSS} slideIndex={currentSlideIndex} slideCount={slides.length} enterAnim={enterAnim} />
+              <PreviewFrame ref={previewRef} slideHtml={previewSlideHtml} globalCss={globalCss} themeCSS={themeCSS} slideIndex={currentSlideIndex} slideCount={slides.length} enterAnim={true} hideNavButtons={hideNavButtons} />
             )}
           </div>
         </div>

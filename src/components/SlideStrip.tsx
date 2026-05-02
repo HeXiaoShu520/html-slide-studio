@@ -5,11 +5,13 @@ import { buildSlideHtml } from '../utils/buildSlideHtml'
 import { getThemeCSS } from '../themes/themeCSS'
 
 export default function SlideStrip() {
-  const { slides, currentSlideIndex, currentTheme, globalCss, setCurrentSlideIndex, addSlide, deleteSlide, moveSlide, insertSlide } = useAppStore()
+  const { slides, currentSlideIndex, currentTheme, globalCss, setCurrentSlideIndex, addSlide, deleteSlide, moveSlide, insertSlide, updateSlideConfig } = useAppStore()
   const themeCSS = getThemeCSS(currentTheme)
 
   // 右键菜单
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; index: number } | null>(null)
+  // 页面设置弹窗
+  const [configDialog, setConfigDialog] = useState<number | null>(null)
 
   // 拖拽状态：insertBefore 表示插入到第几个之前（0~slides.length）
   const dragIndex = useRef<number | null>(null)
@@ -101,6 +103,7 @@ export default function SlideStrip() {
           onClick={e => e.stopPropagation()}
         >
           {[
+            { label: '页面设置', action: () => setConfigDialog(ctxMenu.index) },
             { label: '复制到右边', action: () => copyToSide(ctxMenu.index, 1) },
             { label: '复制到左边', action: () => copyToSide(ctxMenu.index, -1) },
             { label: '删除', action: () => { if (slides.length > 1) deleteSlide(slides[ctxMenu.index].id) }, danger: true },
@@ -113,6 +116,40 @@ export default function SlideStrip() {
           ))}
         </div>
       )}
+
+      {configDialog !== null && (() => {
+        const slide = slides[configDialog]
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 4000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setConfigDialog(null)}>
+            <div style={{ background: 'var(--atag-bg-panel)', border: '1px solid var(--atag-border)', borderRadius: 12, padding: 20, width: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: 'var(--atag-text)' }}>第 {configDialog + 1} 页设置</div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, cursor: 'pointer', color: 'var(--atag-text)', fontSize: 14 }}>
+                <input type="checkbox" checked={slide.autoPlay || false} onChange={e => updateSlideConfig(slide.id, { autoPlay: e.target.checked })} />
+                <span>自动播放动画</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer', color: 'var(--atag-text)', fontSize: 14 }}>
+                <input type="checkbox" checked={slide.autoNext || false} onChange={e => updateSlideConfig(slide.id, { autoNext: e.target.checked })} />
+                <span>自动翻页</span>
+              </label>
+              {slide.autoNext && (
+                <div style={{ marginLeft: 24, marginBottom: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--atag-text-muted)', fontSize: 13 }}>
+                    <span>延迟时间（秒）：</span>
+                    <input type="number" min="1" max="60" value={slide.autoNextDelay || 3} onChange={e => updateSlideConfig(slide.id, { autoNextDelay: +e.target.value })}
+                      style={{ width: 60, padding: '4px 8px', background: 'var(--atag-bg-main)', border: '1px solid var(--atag-border)', borderRadius: 6, color: 'var(--atag-text)' }} />
+                  </label>
+                </div>
+              )}
+              <button onClick={() => setConfigDialog(null)}
+                style={{ width: '100%', padding: '8px 16px', background: 'var(--atag-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
+                确定
+              </button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

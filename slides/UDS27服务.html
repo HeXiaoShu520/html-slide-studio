@@ -1,0 +1,402 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>UDS27安全解锁演示</title>
+<style>
+body{margin:0;overflow:hidden}
+.pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px);white-space:nowrap}
+.pnav button:hover{background:rgba(0,102,255,0.6)}
+.pnav button:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999}
+
+.linebreak{display:block;width:100%;height:1.2em}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:100%;max-width:1000px}
+.card{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:30px;margin:10px;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-5px);box-shadow:0 10px 40px rgba(0,102,255,0.2)}
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.85em;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));color:#fff}
+.icon-circle{width:60px;height:60px;border-radius:50%;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px}
+.flow-container{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0}
+.flow-step{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid var(--primary,#0066FF);border-radius:12px;padding:20px;text-align:center;min-width:150px}
+.flow-arrow{color:var(--primary,#0066FF);font-size:24px}
+.timeline{position:relative;max-width:600px;margin:20px auto;padding-left:30px;border-left:2px solid var(--primary,#0066FF)}
+.timeline-item{position:relative;margin-bottom:30px;padding-left:20px}
+.timeline-item::before{content:'';position:absolute;left:-36px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--primary,#0066FF)}
+.code-block{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:20px;font-family:'Consolas',monospace;font-size:14px;color:#c9d1d9;overflow-x:auto;white-space:pre;margin:15px 0}
+.packet-table{width:100%;border-collapse:collapse;margin:15px 0}
+.packet-table th,.packet-table td{border:1px solid rgba(255,255,255,0.15);padding:10px 15px;text-align:left}
+.packet-table th{background:var(--primary,#0066FF);color:#fff}
+.packet-table tr:nth-child(even){background:rgba(255,255,255,0.03)}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes slideInLeft{to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{to{opacity:1;transform:translateX(0)}}
+@keyframes zoomIn{to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{to{opacity:1;transform:scale(1)}}
+@keyframes rotateIn{to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes bounceIn{0%{opacity:0;transform:scale(0.3)}50%{transform:scale(1.05)}70%{transform:scale(0.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes flipIn{to{opacity:1;transform:perspective(400px) rotateY(0)}}
+.animate-in{opacity:0;transform:translateY(30px)}
+.animate-down{opacity:0;transform:translateY(-30px)}
+.animate-fade{opacity:0}
+.animate-left{opacity:0;transform:translateX(-50px)}
+.animate-right{opacity:0;transform:translateX(50px)}
+.animate-zoom{opacity:0;transform:scale(0.8)}
+.animate-zoom-out{opacity:0;transform:scale(1.2)}
+.animate-rotate{opacity:0;transform:rotate(-180deg) scale(0.8)}
+.animate-bounce{opacity:0;transform:scale(0.3)}
+.animate-flip{opacity:0;transform:perspective(400px) rotateY(90deg)}
+.page.entered .animate-in{animation:fadeInUp .5s ease-out forwards}
+.page.entered .animate-down{animation:fadeInDown .5s ease-out forwards}
+.page.entered .animate-fade{animation:fadeIn .4s ease-out forwards}
+.page.entered .animate-left{animation:slideInLeft .5s ease-out forwards}
+.page.entered .animate-right{animation:slideInRight .5s ease-out forwards}
+.page.entered .animate-zoom{animation:zoomIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-zoom-out{animation:zoomOut .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-rotate{animation:rotateIn .6s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-bounce{animation:bounceIn .7s cubic-bezier(.68,-0.55,.27,1.55) forwards}
+.page.entered .animate-flip{animation:flipIn .6s ease-out forwards}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif,'Microsoft YaHei';overflow:hidden;background:#0a0e1a}
+:root{--primary:#3b82f6;--primary-light:#60a5fa;--bg-main:#0f172a;--bg-card:#1e293b;--text-color:#f1f5f9;--gradient:linear-gradient(135deg,#3b82f6,#8b5cf6);--success:#10b981;--error:#ef4444;--warning:#f59e0b}
+.page{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;padding:2rem;background:var(--bg-main);color:var(--text-color)}
+.card{background:var(--bg-card);border-radius:12px;padding:1.5rem;border:1px solid rgba(59,130,246,0.3)}
+.badge{display:inline-block;padding:.3rem .8rem;background:rgba(59,130,246,0.2);border:1px solid var(--primary);border-radius:20px;font-size:.9rem;color:var(--primary-light)}
+
+</style>
+</head><body>
+<style>
+.page{background:radial-gradient(circle at 30% 50%,rgba(59,130,246,0.15),transparent 50%),radial-gradient(circle at 70% 50%,rgba(139,92,246,0.1),transparent 50%),var(--bg-main)}
+.p1-hero{text-align:center;max-width:800px}
+.p1-icon{font-size:6rem;margin-bottom:2rem}
+.p1-title{font-size:4rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem}
+.p1-subtitle{font-size:1.8rem;color:var(--primary);margin-bottom:2rem}
+.p1-desc{font-size:1.2rem;color:rgba(255,255,255,0.6);line-height:1.8}
+</style>
+<div class="page">
+  <div class="p1-hero">
+    <div class="p1-icon animate-down">🔐</div>
+    <h1 class="p1-title animate-in" style="animation-delay:0.2s">UDS 27 服务</h1>
+    <h2 class="p1-subtitle animate-in" style="animation-delay:0.4s">SecurityAccess 安全解锁协议</h2>
+    <p class="p1-desc animate-in" style="animation-delay:0.6s">基于种子密钥算法的车载诊断安全访问机制<br>保护关键功能免受未授权访问</p>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 20% 80%,rgba(59,130,246,0.1),transparent 40%),var(--bg-main)}
+.p2-container{max-width:1000px;width:100%}
+.p2-title{font-size:2.5rem;text-align:center;margin-bottom:3rem;color:var(--primary-light)}
+.p2-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2rem;margin-bottom:2rem}
+.p2-card{background:var(--bg-card);border-radius:12px;padding:2rem;border:1px solid rgba(59,130,246,0.3)}
+.p2-card h3{font-size:1.5rem;color:var(--primary);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.p2-card p{color:rgba(255,255,255,0.7);line-height:1.8;margin-bottom:1rem}
+.p2-card ul{list-style:none;padding-left:0}
+.p2-card li{padding:0.5rem 0;color:rgba(255,255,255,0.7);position:relative;padding-left:1.5rem}
+.p2-card li:before{content:"▸";position:absolute;left:0;color:var(--primary)}
+</style>
+<div class="page">
+  <div class="p2-container">
+    <h2 class="p2-title animate-fade">UDS 27 协议介绍</h2>
+    <div class="p2-grid">
+      <div class="p2-card animate-in" style="animation-delay:0.2s">
+        <h3>🎯 服务定义</h3>
+        <p><strong>服务 ID：</strong>0x27 (SecurityAccess)</p>
+        <p>用于在执行敏感操作前验证客户端身份，通过种子-密钥质询响应机制实现安全访问控制。</p>
+      </div>
+      <div class="p2-card animate-in" style="animation-delay:0.4s">
+        <h3>🔧 应用场景</h3>
+        <ul>
+          <li>刷写 ECU 程序前解锁</li>
+          <li>修改关键配置参数</li>
+          <li>执行诊断例程</li>
+          <li>访问受保护的数据标识符</li>
+        </ul>
+      </div>
+      <div class="p2-card animate-in" style="animation-delay:0.6s">
+        <h3>🛡️ 安全等级</h3>
+        <p>通过子功能区分不同安全级别：</p>
+        <ul>
+          <li><strong>0x01/0x02：</strong>Level 1（编程会话）</li>
+          <li><strong>0x03/0x04：</strong>Level 2（扩展诊断）</li>
+          <li>奇数请求种子，偶数发送密钥</li>
+        </ul>
+      </div>
+      <div class="p2-card animate-in" style="animation-delay:0.8s">
+        <h3>⚙️ 核心机制</h3>
+        <p><strong>种子密钥算法：</strong></p>
+        <ul>
+          <li>ECU 生成随机种子</li>
+          <li>客户端用密钥算法计算响应</li>
+          <li>ECU 验证密钥正确性</li>
+          <li>验证通过后授予访问权限</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 50% 20%,rgba(59,130,246,0.12),transparent 50%),var(--bg-main)}
+.p3-container{max-width:900px;width:100%}
+.p3-title{font-size:2.5rem;text-align:center;margin-bottom:3rem;color:var(--primary-light)}
+.p3-steps{display:flex;flex-direction:column;gap:1.5rem}
+.p3-step{display:flex;align-items:center;gap:2rem}
+.p3-step-num{width:60px;height:60px;border-radius:50%;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:bold;flex-shrink:0}
+.p3-step-content{flex:1;background:var(--bg-card);border-radius:12px;padding:1.5rem;border:1px solid rgba(59,130,246,0.3)}
+.p3-step-content h3{font-size:1.3rem;color:var(--primary);margin-bottom:0.5rem}
+.p3-step-content p{color:rgba(255,255,255,0.7);line-height:1.6}
+.p3-code{display:inline-block;background:rgba(59,130,246,0.2);padding:0.2rem 0.6rem;border-radius:4px;font-family:monospace;color:var(--primary-light);font-weight:bold}
+</style>
+<div class="page">
+  <div class="p3-container">
+    <h2 class="p3-title animate-fade">交互流程概览</h2>
+    <div class="p3-steps">
+      <div class="p3-step animate-left" style="animation-delay:0.2s"><div class="p3-step-num">1</div><div class="p3-step-content"><h3>请求种子 (Request Seed)</h3><p>客户端发送 <span class="p3-code">27 01</span>，请求安全等级 1 的种子。ECU 响应 <span class="p3-code">67 01 [Seed]</span>，返回 4 字节随机种子。</p></div></div>
+      <div class="p3-step animate-left" style="animation-delay:0.4s"><div class="p3-step-num">2</div><div class="p3-step-content"><h3>计算密钥 (Calculate Key)</h3><p>客户端使用密钥算法（如 AES、自定义算法）对种子进行加密计算，生成 4 字节密钥。</p></div></div>
+      <div class="p3-step animate-left" style="animation-delay:0.6s"><div class="p3-step-num">3</div><div class="p3-step-content"><h3>发送密钥 (Send Key)</h3><p>客户端发送 <span class="p3-code">27 02 [Key]</span>，提交计算出的密钥。ECU 验证密钥是否与预期匹配。</p></div></div>
+      <div class="p3-step animate-left" style="animation-delay:0.8s"><div class="p3-step-num">4</div><div class="p3-step-content"><h3>解锁响应 (Unlock Response)</h3><p>验证成功：ECU 响应 <span class="p3-code">67 02</span>，授予安全访问权限。验证失败：ECU 响应 <span class="p3-code">7F 27 [NRC]</span>，拒绝访问。</p></div></div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 50% 50%,rgba(59,130,246,0.08),transparent 60%),var(--bg-main)}
+.p4-container{max-width:1200px;width:100%}
+.p4-title{font-size:2.5rem;text-align:center;margin-bottom:3rem;color:var(--success)}
+.p4-stage{position:relative;height:400px;background:rgba(30,41,59,0.5);border-radius:12px;border:1px solid rgba(59,130,246,0.3);overflow:hidden}
+.p4-client{position:absolute;left:50px;top:50%;transform:translateY(-50%);text-align:center}
+.p4-ecu{position:absolute;right:50px;top:50%;transform:translateY(-50%);text-align:center}
+.p4-node-icon{width:80px;height:80px;border-radius:50%;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 0.5rem;box-shadow:0 0 20px rgba(59,130,246,0.5)}
+.p4-node-label{font-size:1.2rem;color:var(--primary-light);font-weight:bold}
+.p4-packet{position:absolute;top:50%;transform:translateY(-50%);background:var(--bg-card);border:2px solid var(--primary);border-radius:8px;padding:1rem 1.5rem;font-family:monospace;font-size:1.1rem;font-weight:bold;color:var(--primary-light);box-shadow:0 4px 15px rgba(59,130,246,0.4);opacity:0;white-space:nowrap}
+.p4-hint{text-align:center;margin-top:2rem;color:rgba(255,255,255,0.5);font-size:1rem}
+.page.visible .p4-packet:nth-child(3){animation:flyRight 1.5s ease-in-out 0.5s forwards}
+.page.visible .p4-packet:nth-child(4){animation:flyLeft 1.5s ease-in-out 2.2s forwards}
+.page.visible .p4-packet:nth-child(5){animation:flyRight 1.5s ease-in-out 3.9s forwards}
+.page.visible .p4-packet:nth-child(6){animation:flyLeft 1.5s ease-in-out 5.6s forwards}
+@keyframes flyRight{0%{left:150px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:calc(100% - 350px);opacity:0}}
+@keyframes flyLeft{0%{right:150px;opacity:0}10%{opacity:1}90%{opacity:1}100%{right:calc(100% - 350px);opacity:0}}
+</style>
+<div class="page">
+  <div class="p4-container">
+    <h2 class="p4-title animate-fade">✅ 正响应交互动画</h2>
+    <div class="p4-stage">
+      <div class="p4-client animate-fade" style="animation-delay:0.3s"><div class="p4-node-icon">💻</div><div class="p4-node-label">诊断客户端</div></div>
+      <div class="p4-ecu animate-fade" style="animation-delay:0.3s"><div class="p4-node-icon">🚗</div><div class="p4-node-label">ECU</div></div>
+      <div class="p4-packet">27 01</div>
+      <div class="p4-packet">67 01 12 34 56 78</div>
+      <div class="p4-packet">27 02 AB CD EF 01</div>
+      <div class="p4-packet" style="border-color:var(--success);color:var(--success)">67 02</div>
+    </div>
+    <p class="p4-hint animate-fade" style="animation-delay:0.6s">💡 点击右下角播放按钮查看动画</p>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 80% 30%,rgba(59,130,246,0.1),transparent 50%),var(--bg-main)}
+.p5-container{max-width:1100px;width:100%}
+.p5-title{font-size:2.5rem;text-align:center;margin-bottom:3rem;color:var(--primary-light)}
+.p5-messages{display:flex;flex-direction:column;gap:2rem}
+.p5-msg-card{background:var(--bg-card);border-radius:12px;padding:2rem;border:1px solid rgba(59,130,246,0.3)}
+.p5-msg-title{font-size:1.5rem;color:var(--primary);margin-bottom:1rem}
+.p5-msg-hex{background:rgba(59,130,246,0.1);border:1px solid var(--primary);border-radius:8px;padding:1rem;font-family:monospace;font-size:1.3rem;font-weight:bold;color:var(--primary-light);margin-bottom:1rem;letter-spacing:0.1rem}
+.p5-fields{display:grid;grid-template-columns:150px 1fr;gap:0.8rem;margin-top:1rem}
+.p5-field-label{color:var(--primary);font-weight:bold}
+.p5-field-value{color:rgba(255,255,255,0.8)}
+</style>
+<div class="page">
+  <div class="p5-container">
+    <h2 class="p5-title animate-fade">正响应报文详解</h2>
+    <div class="p5-messages">
+      <div class="p5-msg-card animate-in" style="animation-delay:0.2s">
+        <h3 class="p5-msg-title">📤 请求种子</h3>
+        <div class="p5-msg-hex">27 01</div>
+        <div class="p5-fields">
+          <div class="p5-field-label">服务 ID:</div><div class="p5-field-value">0x27 (SecurityAccess)</div>
+          <div class="p5-field-label">子功能:</div><div class="p5-field-value">0x01 (requestSeed - Level 1)</div>
+          <div class="p5-field-label">说明:</div><div class="p5-field-value">请求安全等级 1 的随机种子</div>
+        </div>
+      </div>
+      <div class="p5-msg-card animate-in" style="animation-delay:0.4s">
+        <h3 class="p5-msg-title">📥 返回种子</h3>
+        <div class="p5-msg-hex">67 01 12 34 56 78</div>
+        <div class="p5-fields">
+          <div class="p5-field-label">响应 ID:</div><div class="p5-field-value">0x67 (0x27 + 0x40)</div>
+          <div class="p5-field-label">子功能:</div><div class="p5-field-value">0x01 (对应请求)</div>
+          <div class="p5-field-label">种子数据:</div><div class="p5-field-value">12 34 56 78 (4 字节随机数)</div>
+          <div class="p5-field-label">说明:</div><div class="p5-field-value">ECU 生成的随机种子，客户端需用此计算密钥</div>
+        </div>
+      </div>
+      <div class="p5-msg-card animate-in" style="animation-delay:0.6s">
+        <h3 class="p5-msg-title">📤 发送密钥</h3>
+        <div class="p5-msg-hex">27 02 AB CD EF 01</div>
+        <div class="p5-fields">
+          <div class="p5-field-label">服务 ID:</div><div class="p5-field-value">0x27 (SecurityAccess)</div>
+          <div class="p5-field-label">子功能:</div><div class="p5-field-value">0x02 (sendKey - Level 1)</div>
+          <div class="p5-field-label">密钥数据:</div><div class="p5-field-value">AB CD EF 01 (4 字节计算结果)</div>
+          <div class="p5-field-label">说明:</div><div class="p5-field-value">客户端通过密钥算法计算出的响应值</div>
+        </div>
+      </div>
+      <div class="p5-msg-card animate-in" style="animation-delay:0.8s">
+        <h3 class="p5-msg-title">✅ 解锁成功</h3>
+        <div class="p5-msg-hex" style="border-color:var(--success);color:var(--success)">67 02</div>
+        <div class="p5-fields">
+          <div class="p5-field-label">响应 ID:</div><div class="p5-field-value">0x67 (0x27 + 0x40)</div>
+          <div class="p5-field-label">子功能:</div><div class="p5-field-value">0x02 (对应请求)</div>
+          <div class="p5-field-label">说明:</div><div class="p5-field-value">密钥验证成功，安全访问权限已授予</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 50% 50%,rgba(239,68,68,0.08),transparent 60%),var(--bg-main)}
+.p6-container{max-width:1200px;width:100%}
+.p6-title{font-size:2.5rem;text-align:center;margin-bottom:3rem;color:var(--error)}
+.p6-stage{position:relative;height:400px;background:rgba(30,41,59,0.5);border-radius:12px;border:1px solid rgba(239,68,68,0.3);overflow:hidden}
+.p6-client{position:absolute;left:50px;top:50%;transform:translateY(-50%);text-align:center}
+.p6-ecu{position:absolute;right:50px;top:50%;transform:translateY(-50%);text-align:center}
+.p6-node-icon{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 0.5rem;box-shadow:0 0 20px rgba(239,68,68,0.5)}
+.p6-node-label{font-size:1.2rem;color:#fca5a5;font-weight:bold}
+.p6-packet{position:absolute;top:50%;transform:translateY(-50%);background:var(--bg-card);border:2px solid var(--error);border-radius:8px;padding:1rem 1.5rem;font-family:monospace;font-size:1.1rem;font-weight:bold;color:#fca5a5;box-shadow:0 4px 15px rgba(239,68,68,0.4);opacity:0;white-space:nowrap}
+.p6-hint{text-align:center;margin-top:2rem;color:rgba(255,255,255,0.5);font-size:1rem}
+.page.visible .p6-packet:nth-child(3){animation:flyRight 1.5s ease-in-out 0.5s forwards}
+.page.visible .p6-packet:nth-child(4){animation:flyLeft 1.5s ease-in-out 2.2s forwards}
+.page.visible .p6-packet:nth-child(5){animation:flyRight 1.5s ease-in-out 3.9s forwards}
+.page.visible .p6-packet:nth-child(6){animation:flyLeft 1.5s ease-in-out 5.6s forwards}
+@keyframes flyRight{0%{left:150px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:calc(100% - 350px);opacity:0}}
+@keyframes flyLeft{0%{right:150px;opacity:0}10%{opacity:1}90%{opacity:1}100%{right:calc(100% - 350px);opacity:0}}
+</style>
+<div class="page">
+  <div class="p6-container">
+    <h2 class="p6-title animate-fade">❌ 负响应交互动画</h2>
+    <div class="p6-stage">
+      <div class="p6-client animate-fade" style="animation-delay:0.3s"><div class="p6-node-icon">💻</div><div class="p6-node-label">诊断客户端</div></div>
+      <div class="p6-ecu animate-fade" style="animation-delay:0.3s"><div class="p6-node-icon">🚗</div><div class="p6-node-label">ECU</div></div>
+      <div class="p6-packet">27 01</div>
+      <div class="p6-packet">67 01 12 34 56 78</div>
+      <div class="p6-packet">27 02 FF FF FF FF</div>
+      <div class="p6-packet">7F 27 35</div>
+    </div>
+    <p class="p6-hint animate-fade" style="animation-delay:0.6s">💡 点击右下角播放按钮查看动画</p>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 30% 70%,rgba(239,68,68,0.1),transparent 50%),var(--bg-main)}
+.p7-container{max-width:1100px;width:100%}
+.p7-title{font-size:2.5rem;text-align:center;margin-bottom:3rem;color:var(--primary-light)}
+.p7-table-wrapper{background:var(--bg-card);border-radius:12px;padding:2rem;border:1px solid rgba(59,130,246,0.3)}
+.p7-table{width:100%;border-collapse:collapse}
+.p7-table thead{background:rgba(59,130,246,0.2)}
+.p7-table th{padding:1rem;text-align:left;color:var(--primary-light);font-weight:bold;border-bottom:2px solid var(--primary)}
+.p7-table tbody tr{border-bottom:1px solid rgba(59,130,246,0.2);transition:background 0.3s}
+.p7-table tbody tr:hover{background:rgba(59,130,246,0.1)}
+.p7-table td{padding:1rem;color:rgba(255,255,255,0.8)}
+.p7-nrc-code{font-family:monospace;font-weight:bold;color:var(--error);font-size:1.1rem}
+.p7-nrc-name{color:var(--primary-light);font-weight:bold}
+</style>
+<div class="page">
+  <div class="p7-container">
+    <h2 class="p7-title animate-fade">负响应 NRC 码详解</h2>
+    <div class="p7-table-wrapper animate-in" style="animation-delay:0.3s">
+      <table class="p7-table">
+        <thead><tr><th style="width:15%">NRC 码</th><th style="width:30%">名称</th><th style="width:55%">说明</th></tr></thead>
+        <tbody>
+          <tr><td class="p7-nrc-code">0x22</td><td class="p7-nrc-name">conditionsNotCorrect</td><td>执行条件不满足（如车速不为 0、档位未挂 P 档等）</td></tr>
+          <tr><td class="p7-nrc-code">0x24</td><td class="p7-nrc-name">requestSequenceError</td><td>请求顺序错误（如未先请求种子就直接发送密钥）</td></tr>
+          <tr><td class="p7-nrc-code">0x25</td><td class="p7-nrc-name">noResponseFromSubnetComponent</td><td>子网组件无响应（网关转发场景下目标 ECU 无响应）</td></tr>
+          <tr><td class="p7-nrc-code">0x35</td><td class="p7-nrc-name">invalidKey</td><td>密钥错误（客户端计算的密钥与 ECU 预期不匹配）</td></tr>
+          <tr><td class="p7-nrc-code">0x36</td><td class="p7-nrc-name">exceededNumberOfAttempts</td><td>超出尝试次数（连续输入错误密钥达到上限，通常为 3-5 次）</td></tr>
+          <tr><td class="p7-nrc-code">0x37</td><td class="p7-nrc-name">requiredTimeDelayNotExpired</td><td>需要延迟时间未到（错误尝试后需等待冷却时间，如 10 秒或 10 分钟）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<style>
+.page{background:radial-gradient(circle at 50% 50%,rgba(59,130,246,0.15),transparent 60%),radial-gradient(circle at 80% 20%,rgba(139,92,246,0.1),transparent 50%),var(--bg-main)}
+.p8-container{max-width:1000px;width:100%;text-align:center}
+.p8-title{font-size:3rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:3rem}
+.p8-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2rem;margin-bottom:3rem}
+.p8-point{background:var(--bg-card);border-radius:12px;padding:2rem;border:1px solid rgba(59,130,246,0.3)}
+.p8-point-icon{font-size:3rem;margin-bottom:1rem}
+.p8-point h3{font-size:1.5rem;color:var(--primary);margin-bottom:1rem}
+.p8-point p{color:rgba(255,255,255,0.7);line-height:1.8}
+.p8-footer{font-size:1.5rem;color:var(--primary-light)}
+</style>
+<div class="page">
+  <div class="p8-container">
+    <h2 class="p8-title animate-fade">总结</h2>
+    <div class="p8-grid">
+      <div class="p8-point animate-zoom" style="animation-delay:0.3s"><div class="p8-point-icon">🔐</div><h3>安全机制</h3><p>UDS 27 通过种子-密钥质询响应机制，有效防止未授权访问关键功能</p></div>
+      <div class="p8-point animate-zoom" style="animation-delay:0.5s"><div class="p8-point-icon">🔄</div><h3>交互流程</h3><p>请求种子 → 计算密钥 → 发送密钥 → 验证响应，四步完成安全解锁</p></div>
+      <div class="p8-point animate-zoom" style="animation-delay:0.7s"><div class="p8-point-icon">✅</div><h3>正响应</h3><p>密钥验证成功后，ECU 响应 67 02，授予安全访问权限</p></div>
+      <div class="p8-point animate-zoom" style="animation-delay:0.9s"><div class="p8-point-icon">❌</div><h3>负响应</h3><p>密钥错误、超出尝试次数等情况下，ECU 返回 7F 27 [NRC] 拒绝访问</p></div>
+    </div>
+    <p class="p8-footer animate-fade" style="animation-delay:1.2s">🎉 感谢观看！</p>
+  </div>
+</div>
+<!-- SLIDE-NAV-BEGIN -->
+<div class="pnav"><button id="btn-prev">上一页</button><button id="btn-replay">播放</button><button id="btn-next">下一页</button></div>
+<div class="pc" id="pc"></div>
+<script>window.slideConfigs=[{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3}];
+const pages=[...document.querySelectorAll('.page')];
+let cur=0,busy=false,autoTimer=null;
+pages.forEach((p,i)=>{
+  p.style.position='fixed';
+  p.style.inset='0';
+  p.style.transition='transform 0.5s cubic-bezier(.4,0,.2,1)';
+  p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';
+  p.style.opacity=i===0?'1':'0';
+  p.style.overflow='auto';
+  p.style.willChange='transform';
+  if(i===0)p.classList.add('entered');
+});
+function updateNav(){
+  const btns=document.querySelectorAll('.pnav button');
+  if(btns[0])btns[0].disabled=cur===0;
+  if(btns[2])btns[2].disabled=cur===pages.length-1;
+}
+function go(d,axis){
+  axis=axis||'y';
+  if(busy||cur+d<0||cur+d>=pages.length)return;
+  busy=true;
+  if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
+  const from=pages[cur],to=pages[cur+d];
+  const sign=d>0?1:-1;
+  from.classList.remove('entered');
+  to.style.transform='translate3d('+(axis==='x'?(sign*100):0)+'%,'+(axis==='y'?(sign*100):0)+'%,0)';
+  to.style.opacity='1';
+  void to.offsetWidth;
+  to.style.transform='translate3d(0,0,0)';
+  from.style.transform='translate3d('+(axis==='x'?(-sign*100):0)+'%,'+(axis==='y'?(-sign*100):0)+'%,0)';
+  from.style.opacity='0';
+  cur+=d;
+  const c=document.getElementById('pc');
+  if(c)c.textContent=(cur+1)+' / '+pages.length;
+  updateNav();
+  setTimeout(()=>{
+    busy=false;
+    to.classList.add('entered');
+    const cfg=window.slideConfigs?.[cur];
+    if(cfg?.autoPlay)replayPage();
+    if(cfg?.autoNext&&cfg.autoNextDelay>0){
+      autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);
+    }
+  },580);
+}
+function replayPage(){const p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible');}
+document.addEventListener('keydown',e=>{
+  if(['ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
+  if(e.key==='ArrowDown')go(1,'y');
+  if(e.key==='ArrowUp')go(-1,'y');
+  if(e.key===' ')replayPage();
+});
+cur=0;pages.forEach((p,i)=>{p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';p.style.opacity=i===0?'1':'0';if(i===0)p.classList.add('entered');});document.getElementById('btn-prev').onclick=function(){go(-1);};document.getElementById('btn-next').onclick=function(){go(1);};document.getElementById('btn-replay').onclick=function(){replayPage();};updateNav();setTimeout(()=>{const cfg=window.slideConfigs?.[cur];if(cfg?.autoPlay)replayPage();if(cfg?.autoNext&&cfg.autoNextDelay>0)autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);},50);</script>
+<!-- SLIDE-NAV-END -->
+</body></html>

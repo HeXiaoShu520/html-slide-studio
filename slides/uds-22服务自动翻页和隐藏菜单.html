@@ -1,0 +1,429 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>uds-22-service</title>
+<style>
+body{margin:0;overflow:hidden}
+.pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999;opacity:0;pointer-events:none}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px);white-space:nowrap}
+.pnav button:hover{background:rgba(0,102,255,0.6)}
+.pnav button:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999;opacity:0}
+
+.linebreak{display:block;width:100%;height:1.2em}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:100%;max-width:1000px}
+.card{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:30px;margin:10px;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-5px);box-shadow:0 10px 40px rgba(0,102,255,0.2)}
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.85em;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));color:#fff}
+.icon-circle{width:60px;height:60px;border-radius:50%;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px}
+.flow-container{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0}
+.flow-step{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid var(--primary,#0066FF);border-radius:12px;padding:20px;text-align:center;min-width:150px}
+.flow-arrow{color:var(--primary,#0066FF);font-size:24px}
+.timeline{position:relative;max-width:600px;margin:20px auto;padding-left:30px;border-left:2px solid var(--primary,#0066FF)}
+.timeline-item{position:relative;margin-bottom:30px;padding-left:20px}
+.timeline-item::before{content:'';position:absolute;left:-36px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--primary,#0066FF)}
+.code-block{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:20px;font-family:'Consolas',monospace;font-size:14px;color:#c9d1d9;overflow-x:auto;white-space:pre;margin:15px 0}
+.packet-table{width:100%;border-collapse:collapse;margin:15px 0}
+.packet-table th,.packet-table td{border:1px solid rgba(255,255,255,0.15);padding:10px 15px;text-align:left}
+.packet-table th{background:var(--primary,#0066FF);color:#fff}
+.packet-table tr:nth-child(even){background:rgba(255,255,255,0.03)}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes slideInLeft{to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{to{opacity:1;transform:translateX(0)}}
+@keyframes zoomIn{to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{to{opacity:1;transform:scale(1)}}
+@keyframes rotateIn{to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes bounceIn{0%{opacity:0;transform:scale(0.3)}50%{transform:scale(1.05)}70%{transform:scale(0.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes flipIn{to{opacity:1;transform:perspective(400px) rotateY(0)}}
+.animate-in{opacity:0;transform:translateY(30px)}
+.animate-down{opacity:0;transform:translateY(-30px)}
+.animate-fade{opacity:0}
+.animate-left{opacity:0;transform:translateX(-50px)}
+.animate-right{opacity:0;transform:translateX(50px)}
+.animate-zoom{opacity:0;transform:scale(0.8)}
+.animate-zoom-out{opacity:0;transform:scale(1.2)}
+.animate-rotate{opacity:0;transform:rotate(-180deg) scale(0.8)}
+.animate-bounce{opacity:0;transform:scale(0.3)}
+.animate-flip{opacity:0;transform:perspective(400px) rotateY(90deg)}
+.page.entered .animate-in{animation:fadeInUp .5s ease-out forwards}
+.page.entered .animate-down{animation:fadeInDown .5s ease-out forwards}
+.page.entered .animate-fade{animation:fadeIn .4s ease-out forwards}
+.page.entered .animate-left{animation:slideInLeft .5s ease-out forwards}
+.page.entered .animate-right{animation:slideInRight .5s ease-out forwards}
+.page.entered .animate-zoom{animation:zoomIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-zoom-out{animation:zoomOut .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-rotate{animation:rotateIn .6s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-bounce{animation:bounceIn .7s cubic-bezier(.68,-0.55,.27,1.55) forwards}
+.page.entered .animate-flip{animation:flipIn .6s ease-out forwards}
+
+:root{--primary:#0066ff;--primary-light:#4d94ff;--bg-main:#0a0e27;--bg-card:rgba(255,255,255,0.05);--text-color:#e0e6ed;--gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text-color);line-height:1.6}
+.page{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative}
+
+</style>
+</head><body>
+<style>
+.p1-cover{background:radial-gradient(circle at 20% 50%,rgba(102,126,234,0.3) 0%,transparent 50%),radial-gradient(circle at 80% 50%,rgba(118,75,162,0.3) 0%,transparent 50%),linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%)}
+.p1-title-box{text-align:center;max-width:800px}
+.p1-service-badge{display:inline-block;padding:8px 24px;border-radius:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;font-size:18px;font-weight:700;margin-bottom:24px;letter-spacing:2px}
+.p1-main-title{font-size:56px;font-weight:800;margin-bottom:16px;background:linear-gradient(135deg,#667eea 0%,#a5b4fc 50%,#764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.p1-subtitle{font-size:28px;color:#94a3b8;margin-bottom:40px;font-weight:300}
+.p1-desc{font-size:18px;color:#cbd5e1;line-height:1.8;max-width:600px;margin:0 auto}
+</style>
+<div class="page p1-cover">
+<div class="p1-title-box">
+<div class="p1-service-badge animate-zoom">SERVICE 0x22</div>
+<h1 class="p1-main-title animate-in" style="animation-delay:0.2s">ReadDataByIdentifier</h1>
+<p class="p1-subtitle animate-in" style="animation-delay:0.3s">通过标识符读取数据</p>
+<p class="p1-desc animate-fade" style="animation-delay:0.5s">UDS 诊断协议中最常用的服务之一<br>用于从 ECU 读取各类诊断数据、配置信息和实时状态</p>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p2-overview{background:radial-gradient(circle at 30% 40%,rgba(102,126,234,0.2) 0%,transparent 60%),linear-gradient(135deg,#0f1629 0%,#1a1f3a 100%);padding:60px}
+.p2-container{max-width:1100px;width:100%}
+.p2-title{font-size:42px;font-weight:700;margin-bottom:48px;text-align:center;color:#a5b4fc}
+.p2-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+.p2-card{background:rgba(255,255,255,0.05);border:1px solid rgba(167,139,250,0.3);border-radius:16px;padding:32px;backdrop-filter:blur(10px)}
+.p2-card-title{font-size:20px;font-weight:600;color:#c4b5fd;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.p2-icon{font-size:24px}
+.p2-card-content{font-size:16px;color:#cbd5e1;line-height:1.8}
+.p2-list{list-style:none;padding:0}
+.p2-list li{padding:8px 0;padding-left:24px;position:relative}
+.p2-list li:before{content:"▸";position:absolute;left:0;color:#818cf8;font-weight:bold}
+</style>
+<div class="page p2-overview">
+<div class="p2-container">
+<h2 class="p2-title animate-in">服务概述</h2>
+<div class="p2-grid">
+<div class="p2-card animate-left" style="animation-delay:0.1s">
+<div class="p2-card-title"><span class="p2-icon">📋</span><span>基本信息</span></div>
+<div class="p2-card-content">
+<ul class="p2-list">
+<li><strong>服务 ID：</strong>0x22</li>
+<li><strong>请求长度：</strong>3+ 字节</li>
+<li><strong>响应 ID：</strong>0x62</li>
+<li><strong>诊断会话：</strong>默认/扩展/编程</li>
+</ul>
+</div>
+</div>
+<div class="p2-card animate-right" style="animation-delay:0.2s">
+<div class="p2-card-title"><span class="p2-icon">🎯</span><span>核心功能</span></div>
+<div class="p2-card-content">
+<ul class="p2-list">
+<li>读取 ECU 软硬件版本号</li>
+<li>获取车辆识别码 VIN</li>
+<li>读取传感器实时数据</li>
+<li>查询故障码冻结帧</li>
+</ul>
+</div>
+</div>
+<div class="p2-card animate-left" style="animation-delay:0.3s">
+<div class="p2-card-title"><span class="p2-icon">⚡</span><span>特点优势</span></div>
+<div class="p2-card-content">
+<ul class="p2-list">
+<li>支持一次请求多个 DID</li>
+<li>数据格式灵活可配置</li>
+<li>响应速度快，开销小</li>
+<li>广泛应用于生产和售后</li>
+</ul>
+</div>
+</div>
+<div class="p2-card animate-right" style="animation-delay:0.4s">
+<div class="p2-card-title"><span class="p2-icon">⚠️</span><span>注意事项</span></div>
+<div class="p2-card-content">
+<ul class="p2-list">
+<li>需要正确的诊断会话</li>
+<li>部分 DID 需要安全访问</li>
+<li>DID 定义由 OEM 自定义</li>
+<li>注意数据字节序和单位</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p3-packet{background:radial-gradient(circle at 50% 30%,rgba(118,75,162,0.25) 0%,transparent 70%),linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);padding:60px}
+.p3-container{max-width:1000px;width:100%}
+.p3-title{font-size:42px;font-weight:700;margin-bottom:48px;text-align:center;color:#a5b4fc}
+.p3-section{margin-bottom:40px}
+.p3-subtitle{font-size:24px;font-weight:600;color:#c4b5fd;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.p3-table-wrapper{background:rgba(255,255,255,0.03);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:24px;overflow-x:auto}
+.p3-table{width:100%;border-collapse:collapse;font-size:15px}
+.p3-table th{background:rgba(102,126,234,0.3);color:#e0e6ed;padding:14px;text-align:left;font-weight:600;border:1px solid rgba(255,255,255,0.2)}
+.p3-table td{padding:12px 14px;border:1px solid rgba(255,255,255,0.15);color:#cbd5e1}
+.p3-table tr:nth-child(even){background:rgba(255,255,255,0.02)}
+.p3-highlight{background:rgba(102,126,234,0.2)!important;color:#a5f3fc;font-weight:600}
+</style>
+<div class="page p3-packet">
+<div class="p3-container">
+<h2 class="p3-title animate-in">报文格式</h2>
+<div class="p3-section animate-left" style="animation-delay:0.1s">
+<div class="p3-subtitle"><span>📤</span><span>请求报文（Request）</span></div>
+<div class="p3-table-wrapper">
+<table class="p3-table">
+<thead><tr><th>字节位置</th><th>参数名称</th><th>数值示例</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td class="p3-highlight">Byte 0</td><td>服务标识符 (SID)</td><td class="p3-highlight">0x22</td><td>ReadDataByIdentifier 服务</td></tr>
+<tr><td class="p3-highlight">Byte 1-2</td><td>数据标识符 (DID)</td><td class="p3-highlight">0xF190</td><td>VIN 车辆识别码（示例）</td></tr>
+<tr><td>Byte 3-4</td><td>数据标识符 (DID)</td><td>0xF187</td><td>备件号（可选，支持多 DID）</td></tr>
+<tr><td>...</td><td>更多 DID</td><td>...</td><td>可继续添加多个 DID</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="p3-section animate-right" style="animation-delay:0.3s">
+<div class="p3-subtitle"><span>📥</span><span>正响应报文（Positive Response）</span></div>
+<div class="p3-table-wrapper">
+<table class="p3-table">
+<thead><tr><th>字节位置</th><th>参数名称</th><th>数值示例</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td class="p3-highlight">Byte 0</td><td>响应标识符</td><td class="p3-highlight">0x62</td><td>SID + 0x40</td></tr>
+<tr><td class="p3-highlight">Byte 1-2</td><td>数据标识符 (DID)</td><td class="p3-highlight">0xF190</td><td>回显请求的 DID</td></tr>
+<tr><td>Byte 3-N</td><td>数据记录</td><td>57 56 57 5A 5A 5A...</td><td>实际数据内容（长度由 DID 定义）</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="p3-section animate-left" style="animation-delay:0.5s">
+<div class="p3-subtitle"><span>❌</span><span>负响应报文（Negative Response）</span></div>
+<div class="p3-table-wrapper">
+<table class="p3-table">
+<thead><tr><th>字节位置</th><th>参数名称</th><th>数值示例</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td class="p3-highlight">Byte 0</td><td>负响应标识</td><td class="p3-highlight">0x7F</td><td>固定值</td></tr>
+<tr><td>Byte 1</td><td>请求服务 ID</td><td>0x22</td><td>回显请求的 SID</td></tr>
+<tr><td class="p3-highlight">Byte 2</td><td>否定响应码 (NRC)</td><td class="p3-highlight">0x31</td><td>requestOutOfRange（DID 不支持）</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p4-flow{background:radial-gradient(circle at 70% 40%,rgba(102,126,234,0.2) 0%,transparent 60%),linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);padding:60px}
+.p4-container{max-width:1100px;width:100%}
+.p4-title{font-size:42px;font-weight:700;margin-bottom:48px;text-align:center;color:#a5b4fc}
+.p4-stage{position:relative;height:500px;display:flex;align-items:center;justify-content:space-between;padding:0 80px}
+.p4-node{width:180px;padding:30px;background:rgba(255,255,255,0.05);border:2px solid #667eea;border-radius:16px;text-align:center;backdrop-filter:blur(10px)}
+.p4-node-title{font-size:20px;font-weight:600;color:#c4b5fd;margin-bottom:8px}
+.p4-node-desc{font-size:14px;color:#94a3b8}
+.p4-line{position:absolute;top:50%;left:50%;width:400px;height:2px;background:linear-gradient(90deg,#667eea,#764ba2);transform:translate(-50%,-50%)}
+.p4-packet{position:absolute;top:50%;left:20%;width:120px;padding:16px;background:rgba(102,126,234,0.3);border:1px solid #818cf8;border-radius:8px;font-size:13px;color:#e0e6ed;text-align:center;transform:translateY(-50%);opacity:0}
+.page.visible .p4-packet{animation:flyRight 2s ease-in-out infinite}
+@keyframes flyRight{0%,100%{left:20%;opacity:0}20%,80%{opacity:1}50%{left:50%}100%{left:80%;opacity:0}}
+</style>
+<div class="page p4-flow">
+<div class="p4-container">
+<h2 class="p4-title animate-in">通信流程</h2>
+<div class="p4-stage">
+<div class="p4-node animate-left" style="animation-delay:0.1s">
+<div class="p4-node-title">🖥️ 诊断仪</div>
+<div class="p4-node-desc">Tester</div>
+</div>
+<div class="p4-line animate-fade" style="animation-delay:0.3s"></div>
+<div class="p4-packet">22 F1 90<br><small>请求 VIN</small></div>
+<div class="p4-node animate-right" style="animation-delay:0.2s">
+<div class="p4-node-title">🚗 ECU</div>
+<div class="p4-node-desc">Electronic Control Unit</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p5-example{background:radial-gradient(circle at 30% 60%,rgba(118,75,162,0.2) 0%,transparent 60%),linear-gradient(135deg,#0f1629 0%,#1a1f3a 100%);padding:60px}
+.p5-container{max-width:900px;width:100%}
+.p5-title{font-size:42px;font-weight:700;margin-bottom:48px;text-align:center;color:#a5b4fc}
+.p5-box{background:rgba(255,255,255,0.03);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:32px;margin-bottom:32px}
+.p5-label{font-size:18px;font-weight:600;color:#c4b5fd;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.p5-code{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:20px;font-family:'Consolas',monospace;font-size:15px;color:#a5f3fc;line-height:1.8}
+.p5-note{margin-top:16px;padding:16px;background:rgba(102,126,234,0.1);border-left:3px solid #667eea;border-radius:4px;font-size:14px;color:#cbd5e1}
+</style>
+<div class="page p5-example">
+<div class="p5-container">
+<h2 class="p5-title animate-in">报文示例</h2>
+<div class="p5-box animate-left" style="animation-delay:0.1s">
+<div class="p5-label"><span>📤</span><span>示例 1：读取 VIN 码</span></div>
+<div class="p5-code">请求: 22 F1 90<br>响应: 62 F1 90 57 56 57 5A 5A 5A 31 4B 35 41 4E 38 37 36 35 34 33</div>
+<div class="p5-note">💡 解析：VIN = WVWZZZ1K5AN876543（17字节 ASCII）</div>
+</div>
+<div class="p5-box animate-right" style="animation-delay:0.2s">
+<div class="p5-label"><span>📤</span><span>示例 2：读取多个 DID</span></div>
+<div class="p5-code">请求: 22 F1 87 F1 90<br>响应: 62 F1 87 31 32 33 34 35 36 37 38 39 F1 90 57 56 57...</div>
+<div class="p5-note">💡 一次请求返回备件号(F187)和VIN(F190)两个数据</div>
+</div>
+<div class="p5-box animate-left" style="animation-delay:0.3s">
+<div class="p5-label"><span>❌</span><span>示例 3：DID 不支持</span></div>
+<div class="p5-code">请求: 22 12 34<br>响应: 7F 22 31</div>
+<div class="p5-note">⚠️ NRC=0x31 表示 requestOutOfRange（DID 不存在或不支持）</div>
+</div>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p6-did{background:radial-gradient(circle at 50% 50%,rgba(102,126,234,0.15) 0%,transparent 70%),linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);padding:60px}
+.p6-container{max-width:1000px;width:100%}
+.p6-title{font-size:42px;font-weight:700;margin-bottom:48px;text-align:center;color:#a5b4fc}
+.p6-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.p6-card{background:rgba(255,255,255,0.03);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:24px}
+.p6-card-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.p6-did-code{font-family:'Consolas',monospace;font-size:16px;font-weight:700;color:#818cf8;background:rgba(102,126,234,0.2);padding:4px 12px;border-radius:6px}
+.p6-did-name{font-size:16px;font-weight:600;color:#c4b5fd}
+.p6-did-desc{font-size:14px;color:#94a3b8;line-height:1.6}
+</style>
+<div class="page p6-did">
+<div class="p6-container">
+<h2 class="p6-title animate-in">常用 DID 列表</h2>
+<div class="p6-grid">
+<div class="p6-card animate-left" style="animation-delay:0.1s">
+<div class="p6-card-header"><span class="p6-did-code">0xF187</span><span class="p6-did-name">备件号</span></div>
+<div class="p6-did-desc">ECU 硬件备件编号，用于识别硬件版本</div>
+</div>
+<div class="p6-card animate-right" style="animation-delay:0.15s">
+<div class="p6-card-header"><span class="p6-did-code">0xF18A</span><span class="p6-did-name">软件版本</span></div>
+<div class="p6-did-desc">ECU 软件版本号，用于软件升级管理</div>
+</div>
+<div class="p6-card animate-left" style="animation-delay:0.2s">
+<div class="p6-card-header"><span class="p6-did-code">0xF190</span><span class="p6-did-name">VIN 码</span></div>
+<div class="p6-did-desc">车辆识别码，17位唯一标识符</div>
+</div>
+<div class="p6-card animate-right" style="animation-delay:0.25s">
+<div class="p6-card-header"><span class="p6-did-code">0xF191</span><span class="p6-did-name">硬件版本</span></div>
+<div class="p6-did-desc">ECU 硬件版本号</div>
+</div>
+<div class="p6-card animate-left" style="animation-delay:0.3s">
+<div class="p6-card-header"><span class="p6-did-code">0xF186</span><span class="p6-did-name">当前会话</span></div>
+<div class="p6-did-desc">当前诊断会话类型（默认/扩展/编程）</div>
+</div>
+<div class="p6-card animate-right" style="animation-delay:0.35s">
+<div class="p6-card-header"><span class="p6-did-code">0xF19E</span><span class="p6-did-name">供应商 ID</span></div>
+<div class="p6-did-desc">ECU 供应商标识符</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p7-scene{background:radial-gradient(circle at 40% 30%,rgba(118,75,162,0.2) 0%,transparent 60%),linear-gradient(135deg,#0f1629 0%,#1a1f3a 100%);padding:60px}
+.p7-container{max-width:1000px;width:100%}
+.p7-title{font-size:42px;font-weight:700;margin-bottom:48px;text-align:center;color:#a5b4fc}
+.p7-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+.p7-card{background:rgba(255,255,255,0.05);border:1px solid rgba(167,139,250,0.3);border-radius:16px;padding:32px}
+.p7-icon{font-size:40px;margin-bottom:16px}
+.p7-card-title{font-size:20px;font-weight:600;color:#c4b5fd;margin-bottom:12px}
+.p7-card-desc{font-size:15px;color:#cbd5e1;line-height:1.7}
+</style>
+<div class="page p7-scene">
+<div class="p7-container">
+<h2 class="p7-title animate-in">应用场景</h2>
+<div class="p7-grid">
+<div class="p7-card animate-left" style="animation-delay:0.1s">
+<div class="p7-icon">🏭</div>
+<div class="p7-card-title">生产线下线检测</div>
+<div class="p7-card-desc">读取 VIN、软硬件版本号，验证 ECU 配置是否正确</div>
+</div>
+<div class="p7-card animate-right" style="animation-delay:0.2s">
+<div class="p7-icon">🔧</div>
+<div class="p7-card-title">售后维修诊断</div>
+<div class="p7-card-desc">读取故障码冻结帧、传感器数据，辅助故障定位</div>
+</div>
+<div class="p7-card animate-left" style="animation-delay:0.3s">
+<div class="p7-icon">📊</div>
+<div class="p7-card-title">车辆状态监控</div>
+<div class="p7-card-desc">实时读取发动机转速、车速、温度等运行参数</div>
+</div>
+<div class="p7-card animate-right" style="animation-delay:0.4s">
+<div class="p7-icon">🔄</div>
+<div class="p7-card-title">软件刷写前检查</div>
+<div class="p7-card-desc">读取当前软件版本，确认是否需要升级</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PAGE -->
+<style>
+.p8-end{background:radial-gradient(circle at 50% 50%,rgba(102,126,234,0.3) 0%,transparent 60%),linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%)}
+.p8-box{text-align:center;max-width:700px}
+.p8-icon{font-size:80px;margin-bottom:24px}
+.p8-title{font-size:48px;font-weight:800;margin-bottom:24px;background:linear-gradient(135deg,#667eea 0%,#a5b4fc 50%,#764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.p8-summary{font-size:18px;color:#cbd5e1;line-height:1.8;margin-bottom:32px}
+.p8-footer{font-size:14px;color:#94a3b8}
+</style>
+<div class="page p8-end">
+<div class="p8-box">
+<div class="p8-icon animate-zoom">✅</div>
+<h2 class="p8-title animate-in" style="animation-delay:0.2s">总结</h2>
+<div class="p8-summary animate-fade" style="animation-delay:0.4s">
+UDS 22 服务是诊断协议的核心功能<br>
+掌握报文格式、DID 定义和应用场景<br>
+是进行车辆诊断开发的基础
+</div>
+<div class="p8-footer animate-fade" style="animation-delay:0.6s">感谢观看 | UDS Diagnostic Protocol</div>
+</div>
+</div>
+<!-- SLIDE-NAV-BEGIN -->
+<div class="pnav"><button id="btn-prev">上一页</button><button id="btn-replay">播放</button><button id="btn-next">下一页</button></div>
+<div class="pc" id="pc"></div>
+<script>window.slideConfigs=[{"autoPlay":true,"autoNext":true,"autoNextDelay":5},{"autoPlay":true,"autoNext":true,"autoNextDelay":5},{"autoPlay":true,"autoNext":true,"autoNextDelay":3},{"autoPlay":true,"autoNext":true,"autoNextDelay":5},{"autoPlay":true,"autoNext":true,"autoNextDelay":5},{"autoPlay":true,"autoNext":true,"autoNextDelay":3},{"autoPlay":true,"autoNext":true,"autoNextDelay":3},{"autoPlay":true,"autoNext":true,"autoNextDelay":3}];
+const pages=[...document.querySelectorAll('.page')];
+let cur=0,busy=false,autoTimer=null;
+pages.forEach((p,i)=>{
+  p.style.position='fixed';
+  p.style.inset='0';
+  p.style.transition='transform 0.5s cubic-bezier(.4,0,.2,1)';
+  p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';
+  p.style.opacity=i===0?'1':'0';
+  p.style.overflow='auto';
+  p.style.willChange='transform';
+  if(i===0)p.classList.add('entered');
+});
+function updateNav(){
+  const btns=document.querySelectorAll('.pnav button');
+  if(btns[0])btns[0].disabled=cur===0;
+  if(btns[2])btns[2].disabled=cur===pages.length-1;
+}
+function go(d,axis){
+  axis=axis||'y';
+  if(busy||cur+d<0||cur+d>=pages.length)return;
+  busy=true;
+  if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
+  const from=pages[cur],to=pages[cur+d];
+  const sign=d>0?1:-1;
+  from.classList.remove('entered');
+  to.style.transform='translate3d('+(axis==='x'?(sign*100):0)+'%,'+(axis==='y'?(sign*100):0)+'%,0)';
+  to.style.opacity='1';
+  void to.offsetWidth;
+  to.style.transform='translate3d(0,0,0)';
+  from.style.transform='translate3d('+(axis==='x'?(-sign*100):0)+'%,'+(axis==='y'?(-sign*100):0)+'%,0)';
+  from.style.opacity='0';
+  cur+=d;
+  const c=document.getElementById('pc');
+  if(c)c.textContent=(cur+1)+' / '+pages.length;
+  updateNav();
+  setTimeout(()=>{
+    busy=false;
+    to.classList.add('entered');
+    const cfg=window.slideConfigs?.[cur];
+    if(cfg?.autoPlay)replayPage();
+    if(cfg?.autoNext&&cfg.autoNextDelay>0){
+      autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);
+    }
+  },580);
+}
+function replayPage(){const p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible');}
+document.addEventListener('keydown',e=>{
+  if(['ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
+  if(e.key==='ArrowDown')go(1,'y');
+  if(e.key==='ArrowUp')go(-1,'y');
+  if(e.key===' ')replayPage();
+});
+cur=0;pages.forEach((p,i)=>{p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';p.style.opacity=i===0?'1':'0';if(i===0)p.classList.add('entered');});document.getElementById('btn-prev').onclick=function(){go(-1);};document.getElementById('btn-next').onclick=function(){go(1);};document.getElementById('btn-replay').onclick=function(){replayPage();};updateNav();setTimeout(()=>{const cfg=window.slideConfigs?.[cur];if(cfg?.autoPlay)replayPage();if(cfg?.autoNext&&cfg.autoNextDelay>0)autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);},50);</script>
+<!-- SLIDE-NAV-END -->
+</body></html>

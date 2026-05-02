@@ -72,10 +72,10 @@ const THEMES: { id: ThemeId; label: string }[] = [
 // API 设置面板：管理 endpoint / apiKey / model，持久化到 localStorage
 function ApiSettings() {
   const [open, setOpen] = useState(false)
-  // 从 localStorage 读取初始值，避免刷新后丢失配置
   const [endpoint, setEndpoint] = useState(() => localStorage.getItem('atag-api-endpoint') || 'https://api.openai.com/v1/chat/completions')
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('atag-api-key') || '')
   const [model, setModel] = useState(() => localStorage.getItem('atag-model') || 'gpt-4o')
+  const [apiType, setApiType] = useState(() => localStorage.getItem('atag-api-type') || 'openai')
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle')
   const ref = useRef<HTMLDivElement>(null)
 
@@ -90,20 +90,17 @@ function ApiSettings() {
   // 保存单个配置项到 localStorage
   const save = (key: string, val: string) => localStorage.setItem(key, val)
 
-  // 发送最小请求测试 API 连通性，走 /api-proxy 代理避免 CORS
   const testConnection = async () => {
     if (!apiKey) return
     setTestStatus('loading')
     try {
-      const isAnthropic = endpoint.includes('anthropic.com')
+      const isAnthropic = apiType === 'anthropic'
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      // Anthropic 用 x-api-key，OpenAI 兼容接口用 Bearer token
       if (isAnthropic) { headers['x-api-key'] = apiKey; headers['anthropic-version'] = '2023-06-01' }
       else headers['Authorization'] = `Bearer ${apiKey}`
       const body = isAnthropic
         ? { model, max_tokens: 8, messages: [{ role: 'user', content: 'hi' }] }
         : { model, max_tokens: 8, messages: [{ role: 'user', content: 'hi' }] }
-      // 确保 endpoint 以 /chat/completions 结尾
       const full = endpoint.endsWith('/chat/completions') ? endpoint : endpoint.replace(/\/$/, '') + '/chat/completions'
       headers['x-target'] = full
       const res = await fetch('/api-proxy', { method: 'POST', headers, body: JSON.stringify(body) })
@@ -127,15 +124,23 @@ function ApiSettings() {
         <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 3000, width: 340, background: 'var(--atag-bg-panel)', border: '1px solid var(--atag-border)', borderRadius: 12, padding: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--atag-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>API 配置</div>
           {[
-            { label: 'OpenAI Base URL', key: 'atag-api-endpoint', val: endpoint, set: setEndpoint, type: 'text' },
+            { label: 'API 类型', key: 'atag-api-type', val: apiType, set: setApiType, type: 'select', options: [{ value: 'openai', label: 'OpenAI' }, { value: 'anthropic', label: 'Anthropic' }] },
+            { label: 'Base URL', key: 'atag-api-endpoint', val: endpoint, set: setEndpoint, type: 'text' },
             { label: 'API Key', key: 'atag-api-key', val: apiKey, set: setApiKey, type: 'password' },
             { label: '模型', key: 'atag-model', val: model, set: setModel, type: 'text' },
-          ].map(({ label, key, val, set, type }) => (
+          ].map(({ label, key, val, set, type, options }) => (
             <div key={key}>
               <div style={{ fontSize: 11, color: 'var(--atag-text-muted)', marginBottom: 4 }}>{label}</div>
-              <input type={type} value={val}
-                onChange={e => { set(e.target.value); save(key, e.target.value); setTestStatus('idle') }}
-                style={{ width: '100%', background: 'var(--atag-bg-card)', border: '1px solid var(--atag-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', boxSizing: 'border-box' }} />
+              {type === 'select' ? (
+                <select value={val} onChange={e => { set(e.target.value); save(key, e.target.value); setTestStatus('idle') }}
+                  style={{ width: '100%', background: 'var(--atag-bg-card)', border: '1px solid var(--atag-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', boxSizing: 'border-box' }}>
+                  {options?.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              ) : (
+                <input type={type} value={val}
+                  onChange={e => { set(e.target.value); save(key, e.target.value); setTestStatus('idle') }}
+                  style={{ width: '100%', background: 'var(--atag-bg-card)', border: '1px solid var(--atag-border)', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: 'var(--atag-text)', outline: 'none', boxSizing: 'border-box' }} />
+              )}
             </div>
           ))}
           <button onClick={testConnection} disabled={testStatus === 'loading' || !apiKey}
@@ -149,11 +154,11 @@ function ApiSettings() {
 }
 
 export default function TopBar() {
-  const { projectName, setProjectName, setShowAIPanel, setPreviewHtml, slides, globalCss, currentTheme } = useAppStore()
+  const { projectName, setProjectName, setShowAIPanel, setPreviewHtml, slides, globalCss, currentTheme, hideNavButtons, pageTransitionDuration, setPageTransitionDuration, globalAutoNextDelay } = useAppStore()
 
   // 导出为独立 HTML 文件，包含完整翻页脚本，可直接用浏览器打开演示
   const handleExport = () => {
-    const html = buildPresentHtml(slides, globalCss, getThemeCSS(currentTheme), projectName)
+    const html = buildPresentHtml(slides, globalCss, getThemeCSS(currentTheme), projectName, 0, hideNavButtons, pageTransitionDuration, globalAutoNextDelay)
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })),
       download: `${projectName}.html`,
@@ -164,7 +169,7 @@ export default function TopBar() {
 
   // 全屏演示：将完整 HTML 写入 previewHtml，触发 App 层的全屏 iframe
   const handlePresent = () => {
-    setPreviewHtml(buildPresentHtml(slides, globalCss, getThemeCSS(currentTheme), projectName))
+    setPreviewHtml(buildPresentHtml(slides, globalCss, getThemeCSS(currentTheme), projectName, 0, hideNavButtons, pageTransitionDuration, globalAutoNextDelay))
   }
 
   // 导入 HTML 文件，解析出各页 slide

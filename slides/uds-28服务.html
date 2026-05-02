@@ -1,0 +1,1017 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>uds-28-communication-control</title>
+<style>
+body{margin:0;overflow:hidden}
+.pnav{position:fixed;bottom:24px;right:24px;display:flex;gap:8px;z-index:999}
+.pnav button{height:32px;padding:0 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;cursor:pointer;font-size:13px;backdrop-filter:blur(8px);white-space:nowrap}
+.pnav button:hover{background:rgba(0,102,255,0.6)}
+.pnav button:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.pc{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.5);font-size:13px;z-index:999}
+
+:root {
+  --primary: #0066FF;
+  --primary-light: #00D9FF;
+  --bg-main: #0a0e1a;
+  --bg-card: rgba(255,255,255,0.05);
+  --text-color: #c8d6e5;
+  --gradient: linear-gradient(135deg, #0066FF, #00D9FF);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:var(--bg-main);color:var(--text-color);line-height:1.6}
+h1,h2,h3{color:#fff}
+h1{font-size:2.5em;margin-bottom:0.5em}
+h2{font-size:1.8em;margin-bottom:0.4em}
+h3{font-size:1.3em;margin-bottom:0.3em}
+p{margin-bottom:1em;color:var(--text-color)}
+.page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;position:relative}
+
+.linebreak{display:block;width:100%;height:1.2em}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:100%;max-width:1000px}
+.card{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:30px;margin:10px;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-5px);box-shadow:0 10px 40px rgba(0,102,255,0.2)}
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.85em;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));color:#fff}
+.icon-circle{width:60px;height:60px;border-radius:50%;background:var(--gradient,linear-gradient(135deg,#0066FF,#00D9FF));display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px}
+.flow-container{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0}
+.flow-step{background:var(--bg-card,rgba(255,255,255,0.07));border:1px solid var(--primary,#0066FF);border-radius:12px;padding:20px;text-align:center;min-width:150px}
+.flow-arrow{color:var(--primary,#0066FF);font-size:24px}
+.timeline{position:relative;max-width:600px;margin:20px auto;padding-left:30px;border-left:2px solid var(--primary,#0066FF)}
+.timeline-item{position:relative;margin-bottom:30px;padding-left:20px}
+.timeline-item::before{content:'';position:absolute;left:-36px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--primary,#0066FF)}
+.code-block{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:20px;font-family:'Consolas',monospace;font-size:14px;color:#c9d1d9;overflow-x:auto;white-space:pre;margin:15px 0}
+.packet-table{width:100%;border-collapse:collapse;margin:15px 0}
+.packet-table th,.packet-table td{border:1px solid rgba(255,255,255,0.15);padding:10px 15px;text-align:left}
+.packet-table th{background:var(--primary,#0066FF);color:#fff}
+.packet-table tr:nth-child(even){background:rgba(255,255,255,0.03)}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes slideInLeft{to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{to{opacity:1;transform:translateX(0)}}
+@keyframes zoomIn{to{opacity:1;transform:scale(1)}}
+@keyframes zoomOut{to{opacity:1;transform:scale(1)}}
+@keyframes rotateIn{to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes bounceIn{0%{opacity:0;transform:scale(0.3)}50%{transform:scale(1.05)}70%{transform:scale(0.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes flipIn{to{opacity:1;transform:perspective(400px) rotateY(0)}}
+.animate-in{opacity:0;transform:translateY(30px)}
+.animate-down{opacity:0;transform:translateY(-30px)}
+.animate-fade{opacity:0}
+.animate-left{opacity:0;transform:translateX(-50px)}
+.animate-right{opacity:0;transform:translateX(50px)}
+.animate-zoom{opacity:0;transform:scale(0.8)}
+.animate-zoom-out{opacity:0;transform:scale(1.2)}
+.animate-rotate{opacity:0;transform:rotate(-180deg) scale(0.8)}
+.animate-bounce{opacity:0;transform:scale(0.3)}
+.animate-flip{opacity:0;transform:perspective(400px) rotateY(90deg)}
+.page.entered .animate-in{animation:fadeInUp .5s ease-out forwards}
+.page.entered .animate-down{animation:fadeInDown .5s ease-out forwards}
+.page.entered .animate-fade{animation:fadeIn .4s ease-out forwards}
+.page.entered .animate-left{animation:slideInLeft .5s ease-out forwards}
+.page.entered .animate-right{animation:slideInRight .5s ease-out forwards}
+.page.entered .animate-zoom{animation:zoomIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-zoom-out{animation:zoomOut .5s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-rotate{animation:rotateIn .6s cubic-bezier(.34,1.56,.64,1) forwards}
+.page.entered .animate-bounce{animation:bounceIn .7s cubic-bezier(.68,-0.55,.27,1.55) forwards}
+.page.entered .animate-flip{animation:flipIn .6s ease-out forwards}
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0e1a; }
+    .page { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  
+</style>
+</head><body>
+<!-- 第1页：封面 -->
+<style>
+/* 封面页 - 深蓝科技渐变背景 */
+.p1-cover {
+  background: radial-gradient(circle at 30% 40%, rgba(0, 102, 255, 0.15), transparent 50%),
+              radial-gradient(circle at 70% 60%, rgba(138, 43, 226, 0.1), transparent 50%),
+              linear-gradient(135deg, #0a1628 0%, #1a2332 100%);
+}
+
+/* 主标题容器 */
+.p1-title-box {
+  text-align: center;
+  color: white;
+}
+
+/* 主标题 */
+.p1-main-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 副标题 */
+.p1-subtitle {
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 3rem;
+}
+
+/* 服务代码徽章 */
+.p1-service-badge {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  background: rgba(96, 165, 250, 0.2);
+  border: 2px solid rgba(96, 165, 250, 0.5);
+  border-radius: 2rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #60a5fa;
+  margin-bottom: 2rem;
+}
+
+/* 功能标签容器 */
+.p1-tags {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* 单个标签 */
+.p1-tag {
+  padding: 0.5rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+}
+</style>
+
+<div class="page p1-cover" style="position: relative;">
+  <div class="p1-title-box">
+    <h1 class="p1-main-title">UDS 通信控制服务</h1>
+    <p class="p1-subtitle">CommunicationControl (0x28)</p>
+    <div class="p1-service-badge">Service ID: 0x28</div>
+    <div class="p1-tags">
+      <span class="p1-tag">🔒 网络管理</span>
+      <span class="p1-tag">📡 报文控制</span>
+      <span class="p1-tag">🛡️ 安全隔离</span>
+      <span class="p1-tag">⚙️ 诊断优先</span>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<!-- 第2页：服务简介 -->
+<style>
+/* 简介页 - 深紫渐变背景 */
+.p2-intro {
+  background: radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.12), transparent 50%),
+              radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.1), transparent 50%),
+              linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 3rem;
+}
+
+.p2-content {
+  max-width: 900px;
+  margin: 0 auto;
+  color: white;
+}
+
+.p2-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #a78bfa;
+  text-align: center;
+}
+
+.p2-desc {
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.p2-features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.p2-feature-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.p2-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.p2-feature-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  margin-bottom: 0.5rem;
+}
+
+.p2-feature-desc {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+</style>
+
+<div class="page p2-intro" style="position: relative;">
+  <div class="p2-content">
+    <h2 class="p2-title">📋 服务简介</h2>
+    <p class="p2-desc">
+      CommunicationControl (0x28) 服务用于控制 ECU 的通信行为，允许诊断仪在诊断过程中临时禁用或启用特定类型的报文收发，确保诊断操作不受干扰，同时保护关键通信通道。
+    </p>
+
+    <div class="p2-features">
+      <div class="p2-feature-card">
+        <div class="p2-icon">🔇</div>
+        <div class="p2-feature-title">禁用通信</div>
+        <div class="p2-feature-desc">临时禁用应用层报文的接收和/或发送，避免诊断期间的干扰</div>
+      </div>
+
+      <div class="p2-feature-card">
+        <div class="p2-icon">🔊</div>
+        <div class="p2-feature-title">启用通信</div>
+        <div class="p2-feature-desc">恢复正常的报文收发功能，退出诊断隔离状态</div>
+      </div>
+
+      <div class="p2-feature-card">
+        <div class="p2-icon">🎯</div>
+        <div class="p2-feature-title">精细控制</div>
+        <div class="p2-feature-desc">支持分别控制接收/发送方向，以及应用层/网络管理层报文</div>
+      </div>
+
+      <div class="p2-feature-card">
+        <div class="p2-icon">🛡️</div>
+        <div class="p2-feature-title">安全保护</div>
+        <div class="p2-feature-desc">诊断报文始终保持畅通，确保诊断仪能随时恢复通信</div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<!-- 第3页：控制类型 -->
+<style>
+.p3-types {
+  background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.15), transparent 60%),
+              linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 3rem;
+}
+
+.p3-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  color: white;
+}
+
+.p3-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  color: #60a5fa;
+  text-align: center;
+}
+
+.p3-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.p3-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(96, 165, 250, 0.3);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.p3-code {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: rgba(96, 165, 250, 0.2);
+  border-radius: 0.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #60a5fa;
+  margin-bottom: 1rem;
+}
+
+.p3-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 0.75rem;
+}
+
+.p3-desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+}
+
+.p3-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+</style>
+
+<div class="page p3-types" style="position: relative;">
+  <div class="p3-content">
+    <h2 class="p3-title">🎛️ 控制类型 (ControlType)</h2>
+
+    <div class="p3-grid">
+      <div class="p3-card">
+        <div class="p3-icon">🔇</div>
+        <div class="p3-code">0x00</div>
+        <div class="p3-name">启用 Rx 和 Tx</div>
+        <div class="p3-desc">恢复正常通信，允许接收和发送应用层报文</div>
+      </div>
+
+      <div class="p3-card">
+        <div class="p3-icon">📥</div>
+        <div class="p3-code">0x01</div>
+        <div class="p3-name">启用 Rx，禁用 Tx</div>
+        <div class="p3-desc">只接收报文，不发送应用层报文</div>
+      </div>
+
+      <div class="p3-card">
+        <div class="p3-icon">📤</div>
+        <div class="p3-code">0x02</div>
+        <div class="p3-name">禁用 Rx，启用 Tx</div>
+        <div class="p3-desc">只发送报文，不接收应用层报文</div>
+      </div>
+
+      <div class="p3-card">
+        <div class="p3-icon">🚫</div>
+        <div class="p3-code">0x03</div>
+        <div class="p3-name">禁用 Rx 和 Tx</div>
+        <div class="p3-desc">完全隔离应用层通信，仅保留诊断通道</div>
+      </div>
+
+      <div class="p3-card">
+        <div class="p3-icon">🌐</div>
+        <div class="p3-code">0x04</div>
+        <div class="p3-name">启用 Rx 和 Tx (含 NM)</div>
+        <div class="p3-desc">恢复所有通信，包括网络管理报文</div>
+      </div>
+
+      <div class="p3-card">
+        <div class="p3-icon">🔒</div>
+        <div class="p3-code">0x05</div>
+        <div class="p3-name">启用 Rx，禁用 Tx (含 NM)</div>
+        <div class="p3-desc">只接收，禁用发送（包括 NM 报文）</div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<!-- 第4页：报文格式 -->
+<style>
+.p4-format {
+  background: radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.1), transparent 50%),
+              linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  padding: 3rem;
+}
+
+.p4-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  color: white;
+}
+
+.p4-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  color: #34d399;
+  text-align: center;
+}
+
+.p4-section {
+  margin-bottom: 2.5rem;
+}
+
+.p4-subtitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #6ee7b7;
+  margin-bottom: 1rem;
+}
+
+.p4-table {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.p4-table thead {
+  background: rgba(52, 211, 153, 0.15);
+}
+
+.p4-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #6ee7b7;
+  font-size: 0.95rem;
+}
+
+.p4-table td {
+  padding: 0.9rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.p4-byte {
+  font-family: 'Courier New', monospace;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.p4-example {
+  font-family: 'Courier New', monospace;
+  color: #fbbf24;
+}
+</style>
+
+<div class="page p4-format" style="position: relative;">
+  <div class="p4-content">
+    <h2 class="p4-title">📦 报文格式</h2>
+
+    <div class="p4-section">
+      <div class="p4-subtitle">📤 请求报文 (Request)</div>
+      <table class="p4-table">
+        <thead>
+          <tr>
+            <th>字节</th>
+            <th>参数</th>
+            <th>说明</th>
+            <th>示例</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="p4-byte">Byte 0</td>
+            <td>SID</td>
+            <td>服务标识符</td>
+            <td class="p4-example">0x28</td>
+          </tr>
+          <tr>
+            <td class="p4-byte">Byte 1</td>
+            <td>ControlType</td>
+            <td>控制类型 (0x00~0x05)</td>
+            <td class="p4-example">0x03</td>
+          </tr>
+          <tr>
+            <td class="p4-byte">Byte 2</td>
+            <td>CommunicationType</td>
+            <td>通信类型 (高4位: 子网, 低4位: 报文类型)</td>
+            <td class="p4-example">0x01</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="p4-section">
+      <div class="p4-subtitle">📥 肯定响应 (Positive Response)</div>
+      <table class="p4-table">
+        <thead>
+          <tr>
+            <th>字节</th>
+            <th>参数</th>
+            <th>说明</th>
+            <th>示例</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="p4-byte">Byte 0</td>
+            <td>SID + 0x40</td>
+            <td>肯定响应标识</td>
+            <td class="p4-example">0x68</td>
+          </tr>
+          <tr>
+            <td class="p4-byte">Byte 1</td>
+            <td>ControlType</td>
+            <td>回显控制类型</td>
+            <td class="p4-example">0x03</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<!-- 第5页：交互流程 -->
+<style>
+.p5-flow {
+  background: radial-gradient(circle at 60% 40%, rgba(99, 102, 241, 0.12), transparent 50%),
+              radial-gradient(circle at 30% 70%, rgba(168, 85, 247, 0.1), transparent 50%),
+              linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  padding: 3rem;
+}
+
+.p5-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  color: white;
+}
+
+.p5-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  color: #818cf8;
+  text-align: center;
+}
+
+.p5-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.p5-step {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.p5-num {
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.p5-step-content {
+  flex: 1;
+}
+
+.p5-step-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #c7d2fe;
+  margin-bottom: 0.5rem;
+}
+
+.p5-step-desc {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+.p5-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+</style>
+
+<div class="page p5-flow" style="position: relative;">
+  <div class="p5-content">
+    <h2 class="p5-title">🔄 交互流程</h2>
+
+    <div class="p5-steps">
+      <div class="p5-step">
+        <div class="p5-num">1</div>
+        <div class="p5-step-content">
+          <div class="p5-step-title">诊断仪发送请求</div>
+          <div class="p5-step-desc">诊断仪发送 0x28 服务请求，指定控制类型（如 0x03 禁用 Rx/Tx）和通信类型（如 0x01 应用层报文）</div>
+        </div>
+        <div class="p5-icon">📤</div>
+      </div>
+
+      <div class="p5-step">
+        <div class="p5-num">2</div>
+        <div class="p5-step-content">
+          <div class="p5-step-title">ECU 执行控制</div>
+          <div class="p5-step-desc">ECU 接收请求后，立即执行通信控制操作，禁用或启用指定类型的报文收发</div>
+        </div>
+        <div class="p5-icon">⚙️</div>
+      </div>
+
+      <div class="p5-step">
+        <div class="p5-num">3</div>
+        <div class="p5-step-content">
+          <div class="p5-step-title">ECU 返回肯定响应</div>
+          <div class="p5-step-desc">ECU 返回 0x68 肯定响应，回显控制类型，确认操作已生效</div>
+        </div>
+        <div class="p5-icon">✅</div>
+      </div>
+
+      <div class="p5-step">
+        <div class="p5-num">4</div>
+        <div class="p5-step-content">
+          <div class="p5-step-title">诊断操作执行</div>
+          <div class="p5-step-desc">在通信隔离状态下，诊断仪可以安全执行刷写、配置等操作，不受应用层报文干扰</div>
+        </div>
+        <div class="p5-icon">🔧</div>
+      </div>
+
+      <div class="p5-step">
+        <div class="p5-num">5</div>
+        <div class="p5-step-content">
+          <div class="p5-step-title">恢复正常通信</div>
+          <div class="p5-step-desc">诊断完成后，诊断仪发送 0x28 00 01 请求，恢复应用层报文的正常收发</div>
+        </div>
+        <div class="p5-icon">🔊</div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<!-- 第6页：时序图 -->
+<style>
+.p6-sequence {
+  background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.08), transparent 60%),
+              linear-gradient(135deg, #0c4a6e 0%, #075985 100%);
+}
+
+.p6-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.p6-title {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #38bdf8;
+  text-align: center;
+}
+
+.p6-actor {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.p6-tester {
+  left: 15%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.p6-ecu {
+  right: 15%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.p6-actor-icon {
+  width: 5rem;
+  height: 5rem;
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  box-shadow: 0 0 30px rgba(14, 165, 233, 0.4);
+}
+
+.p6-actor-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #7dd3fc;
+}
+
+.p6-lifeline {
+  position: absolute;
+  width: 2px;
+  height: 60%;
+  background: rgba(125, 211, 252, 0.3);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.p6-lifeline-tester {
+  left: calc(15% + 2.5rem);
+}
+
+.p6-lifeline-ecu {
+  right: calc(15% + 2.5rem);
+}
+
+.p6-messages {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.p6-msg {
+  position: absolute;
+  width: 100%;
+  opacity: 0;
+}
+
+.p6-arrow {
+  position: relative;
+  height: 2px;
+  background: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+}
+
+.p6-arrow::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid #fbbf24;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+
+.p6-arrow-back {
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+}
+
+.p6-arrow-back::after {
+  border-left: none;
+  border-right: 12px solid #34d399;
+  right: auto;
+  left: 0;
+}
+
+.p6-msg-label {
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: white;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.p6-msg1 { top: -8rem; }
+.p6-msg2 { top: -2rem; }
+.p6-msg3 { top: 4rem; }
+
+@keyframes p6-fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page.entered .p6-actor,
+.page.entered .p6-lifeline {
+  animation: p6-fade-in 0.6s ease-out forwards;
+}
+
+@keyframes p6-msg-fly {
+  0% { opacity: 0; transform: translateX(-50px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.page.visible .p6-msg1 {
+  animation: p6-msg-fly 0.8s ease-out 0.3s forwards;
+}
+
+.page.visible .p6-msg2 {
+  animation: p6-msg-fly 0.8s ease-out 1.3s forwards;
+}
+
+.page.visible .p6-msg3 {
+  animation: p6-msg-fly 0.8s ease-out 2.3s forwards;
+}
+</style>
+
+<div class="page p6-sequence" style="position: relative;">
+  <h2 class="p6-title">⏱️ 时序图</h2>
+
+  <div class="p6-stage">
+    <div class="p6-actor p6-tester">
+      <div class="p6-actor-icon">🖥️</div>
+      <div class="p6-actor-name">诊断仪</div>
+    </div>
+
+    <div class="p6-actor p6-ecu">
+      <div class="p6-actor-icon">🔧</div>
+      <div class="p6-actor-name">ECU</div>
+    </div>
+
+    <div class="p6-lifeline p6-lifeline-tester"></div>
+    <div class="p6-lifeline p6-lifeline-ecu"></div>
+
+    <div class="p6-messages">
+      <div class="p6-msg p6-msg1">
+        <div class="p6-arrow"></div>
+        <div class="p6-msg-label">28 03 01 (禁用 Rx/Tx)</div>
+      </div>
+
+      <div class="p6-msg p6-msg2">
+        <div class="p6-arrow p6-arrow-back"></div>
+        <div class="p6-msg-label">68 03 (肯定响应)</div>
+      </div>
+
+      <div class="p6-msg p6-msg3">
+        <div class="p6-arrow"></div>
+        <div class="p6-msg-label">28 00 01 (启用 Rx/Tx)</div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- PAGE -->
+<!-- 第7页：应用场景 -->
+<style>
+.p7-scenarios {
+  background: radial-gradient(circle at 30% 40%, rgba(168, 85, 247, 0.12), transparent 50%),
+              radial-gradient(circle at 70% 60%, rgba(236, 72, 153, 0.1), transparent 50%),
+              linear-gradient(135deg, #581c87 0%, #6b21a8 100%);
+  padding: 3rem;
+}
+
+.p7-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  color: white;
+}
+
+.p7-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  color: #e9d5ff;
+  text-align: center;
+}
+
+.p7-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.p7-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(233, 213, 255, 0.3);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+.p7-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.p7-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f3e8ff;
+  margin-bottom: 0.75rem;
+}
+
+.p7-card-desc {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
+}
+</style>
+
+<div class="page p7-scenarios" style="position: relative;">
+  <div class="p7-content">
+    <h2 class="p7-title">🎯 应用场景</h2>
+
+    <div class="p7-grid">
+      <div class="p7-card">
+        <div class="p7-icon">💾</div>
+        <div class="p7-card-title">ECU 刷写</div>
+        <div class="p7-card-desc">在刷写固件前禁用应用层通信，避免其他报文干扰刷写过程，确保数据完整性</div>
+      </div>
+
+      <div class="p7-card">
+        <div class="p7-icon">⚙️</div>
+        <div class="p7-card-title">参数配置</div>
+        <div class="p7-card-desc">在写入配置参数时隔离通信，防止应用层逻辑读取到不一致的中间状态</div>
+      </div>
+
+      <div class="p7-card">
+        <div class="p7-icon">🔍</div>
+        <div class="p7-card-title">故障诊断</div>
+        <div class="p7-card-desc">在执行复杂诊断流程时，临时禁用正常通信，专注于诊断数据采集和分析</div>
+      </div>
+
+      <div class="p7-card">
+        <div class="p7-icon">🧪</div>
+        <div class="p7-card-title">EOL 测试</div>
+        <div class="p7-card-desc">在产线下线测试时，控制 ECU 通信状态，确保测试环境的可控性和可重复性</div>
+      </div>
+
+      <div class="p7-card">
+        <div class="p7-icon">🛡️</div>
+        <div class="p7-card-title">安全访问</div>
+        <div class="p7-card-desc">在执行安全敏感操作前，隔离应用层通信，降低安全风险和攻击面</div>
+      </div>
+
+      <div class="p7-card">
+        <div class="p7-icon">🔄</div>
+        <div class="p7-card-title">ECU 复位前准备</div>
+        <div class="p7-card-desc">在执行 ECU 复位前，先禁用通信，避免复位过程中的报文冲突和异常</div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- SLIDE-NAV-BEGIN -->
+<div class="pnav"><button id="btn-prev">上一页</button><button id="btn-replay">播放</button><button id="btn-next">下一页</button></div>
+<div class="pc" id="pc"></div>
+<script>window.slideConfigs=[{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3},{"autoPlay":false,"autoNext":false,"autoNextDelay":3}];
+const pages=[...document.querySelectorAll('.page')];
+let cur=0,busy=false,autoTimer=null;
+pages.forEach((p,i)=>{
+  p.style.position='fixed';
+  p.style.inset='0';
+  p.style.transition='transform 0.5s cubic-bezier(.4,0,.2,1)';
+  p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';
+  p.style.opacity=i===0?'1':'0';
+  p.style.overflow='auto';
+  p.style.willChange='transform';
+  if(i===0)p.classList.add('entered');
+});
+function updateNav(){
+  const btns=document.querySelectorAll('.pnav button');
+  if(btns[0])btns[0].disabled=cur===0;
+  if(btns[2])btns[2].disabled=cur===pages.length-1;
+}
+function go(d,axis){
+  axis=axis||'y';
+  if(busy||cur+d<0||cur+d>=pages.length)return;
+  busy=true;
+  if(autoTimer){clearTimeout(autoTimer);autoTimer=null;}
+  const from=pages[cur],to=pages[cur+d];
+  const sign=d>0?1:-1;
+  from.classList.remove('entered');
+  to.style.transform='translate3d('+(axis==='x'?(sign*100):0)+'%,'+(axis==='y'?(sign*100):0)+'%,0)';
+  to.style.opacity='1';
+  void to.offsetWidth;
+  to.style.transform='translate3d(0,0,0)';
+  from.style.transform='translate3d('+(axis==='x'?(-sign*100):0)+'%,'+(axis==='y'?(-sign*100):0)+'%,0)';
+  from.style.opacity='0';
+  cur+=d;
+  const c=document.getElementById('pc');
+  if(c)c.textContent=(cur+1)+' / '+pages.length;
+  updateNav();
+  setTimeout(()=>{
+    busy=false;
+    to.classList.add('entered');
+    const cfg=window.slideConfigs?.[cur];
+    if(cfg?.autoPlay)replayPage();
+    if(cfg?.autoNext&&cfg.autoNextDelay>0){
+      autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);
+    }
+  },580);
+}
+function replayPage(){const p=pages[cur];p.classList.remove('visible');void p.offsetWidth;p.classList.add('visible');}
+document.addEventListener('keydown',e=>{
+  if(['ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
+  if(e.key==='ArrowDown')go(1,'y');
+  if(e.key==='ArrowUp')go(-1,'y');
+  if(e.key===' ')replayPage();
+});
+cur=0;pages.forEach((p,i)=>{p.style.transform=i===0?'translate3d(0,0,0)':'translate3d(0,100%,0)';p.style.opacity=i===0?'1':'0';if(i===0)p.classList.add('entered');});document.getElementById('btn-prev').onclick=function(){go(-1);};document.getElementById('btn-next').onclick=function(){go(1);};document.getElementById('btn-replay').onclick=function(){replayPage();};updateNav();setTimeout(()=>{const cfg=window.slideConfigs?.[cur];if(cfg?.autoPlay)replayPage();if(cfg?.autoNext&&cfg.autoNextDelay>0)autoTimer=setTimeout(()=>go(1),cfg.autoNextDelay*1000);},50);</script>
+<!-- SLIDE-NAV-END -->
+</body></html>
